@@ -454,6 +454,7 @@ async function loadMemberships(){
   memberships=await api("/memberships?"+params);
 }
 async function renderTracker(){
+  const scrollY=window.scrollY;
   const root=document.getElementById("root");
   root.innerHTML=`<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>`;
   try{
@@ -533,7 +534,6 @@ async function renderTracker(){
         <select id="fs"><option value="">All statuses</option><option value="active">Active</option><option value="expiring">Expiring ≤90d</option><option value="expired">Expired</option></select>
         <select id="fr"><option value="">All roles</option><option value="regular">Regular</option><option value="alternate">Alternate</option></select>
         <select id="fl"><option value="">All eligibility</option><option value="limited">Term limited</option><option value="approaching">Approaching</option><option value="eligible">Eligible</option></select>
-        <button class="btn btn-p" id="addMbBtn"><i class="fa-solid fa-plus"></i> Add</button>
       </div>
       ${bulkBar}
       <div class="notice"><i class="fa-solid fa-circle-info"></i> Consecutive service shows projected years at end of current term, with today's count below.</div>
@@ -552,7 +552,7 @@ async function renderTracker(){
     document.getElementById("fs")?.addEventListener("change",e=>{fStatus=e.target.value;renderTracker()});
     document.getElementById("fr")?.addEventListener("change",e=>{fRole=e.target.value;renderTracker()});
     document.getElementById("fl")?.addEventListener("change",e=>{fLimit=e.target.value;renderTracker()});
-    document.getElementById("addMbBtn")?.addEventListener("click",()=>{editMid=null;modalTerms=[];showModal=true;renderAll()});
+    requestAnimationFrame(()=>window.scrollTo(0,scrollY));
   }catch(e){
     root.innerHTML=`<div class="error-msg">Failed to load tracker data.</div>`;
   }
@@ -582,7 +582,15 @@ async function renderPeople(){
           </div>
         </div>`).join("")}
       </div>`;
-    document.getElementById("psrch")?.addEventListener("input",e=>{search=e.target.value;renderPeople()});
+    document.getElementById("psrch")?.addEventListener("input",e=>{
+      search=e.target.value;
+      clearTimeout(window._pplTimer);
+      window._pplTimer=setTimeout(async()=>{
+        await renderPeople();
+        const inp=document.getElementById("psrch");
+        if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}
+      },300);
+    });
     document.getElementById("addPBtn")?.addEventListener("click",()=>{editPid=null;showPersonModal=true;renderAll()});
   }catch(e){
     root.innerHTML=`<div class="error-msg">Failed to load people.</div>`;
@@ -856,7 +864,7 @@ async function applyBulk(){
     }else throw e;
   }
   selected.clear();showBulk=false;
-  renderTracker();
+  await renderAll();
 }
 
 // ── routing ──────────────────────────────────────────────────────
