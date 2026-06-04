@@ -192,19 +192,18 @@ td{padding:7px 8px;vertical-align:middle;overflow:hidden;
     <div style="font-size:10px;font-weight:600;opacity:.7;letter-spacing:.12em;text-transform:uppercase;margin-bottom:1px">New Canaan, Connecticut</div>
     <h1><i class="fa-solid fa-users-gear"></i> Boards &amp; Commissions</h1>
   </div>
-  <div style="display:flex;align-items:center;gap:8px">
-    <span id="hdr-sub" style="font-size:11px;opacity:.7"></span>
-    <div id="auth-btn"></div>
-  </div>
+  <span id="hdr-sub" style="font-size:11px;opacity:.7"></span>
 </div>
 
 <div class="tab-bar" id="tab-bar">
   <button class="tab active" onclick="setTab('dashboard')">
     <i class="fa-solid fa-gauge"></i> Dashboard</button>
-  <button class="tab" id="tab-tracker" onclick="setTab('tracker')">
+  <button class="tab" onclick="setTab('tracker')">
     <i class="fa-solid fa-list"></i> Tracker</button>
-  <button class="tab" id="tab-people" onclick="setTab('people')">
+  <button class="tab" onclick="setTab('people')">
     <i class="fa-solid fa-users"></i> People</button>
+  <button class="tab" onclick="setTab('roster')">
+    <i class="fa-solid fa-address-book"></i> Roster</button>
 </div>
 
 <div class="content" id="root">
@@ -236,7 +235,8 @@ let dashFilter=null,dashFilterCache={};
 let sectCollapsed={upcoming:true,vacancies:true};
 let currentEditMembership=null;
 let dashBulkSelected=new Set();
-let isAdmin=false;
+let isAdmin=true; // auth disabled during testing
+let rosterBoard=null;
 
 // ── api helpers ──────────────────────────────────────────────────
 async function api(path,opts={}){
@@ -338,7 +338,7 @@ async function renderDashboard(reload=true){
     {key:"expiring", label:"Expiring ≤90d",   val:s.expiring_90, color:"var(--amber)"},
     {key:"limited",  label:"Term limited",     val:s.limited,     color:"var(--red)"},
     {key:"approaching",label:"Near 12yr limit",val:s.approaching, color:"var(--amber)"},
-    {key:"vacancies",label:"Open / flagged",   val:s.vacancies,   color:"var(--red)"},
+    {key:"vacancies",label:"Vacant / Expired",  val:s.vacancies,   color:"var(--red)"},
   ];
   const statHtml=`<div class="stat${dashFilter===null?' stat-on':''}" onclick="setDashFilter(null)" title="Show all sections">
       <div class="stat-label">Total members</div><div class="stat-val">${s.total}</div></div>`
@@ -349,7 +349,7 @@ async function renderDashboard(reload=true){
   // filter panel
   let filterHtml="";
   if(dashFilter){
-    const labels={expiring:"Expiring ≤90 Days",limited:"Term Limited",approaching:"Near 12-Year Limit",vacancies:"Vacancies & Openings"};
+    const labels={expiring:"Expiring ≤90 Days",limited:"Term Limited",approaching:"Near 12-Year Limit",vacancies:"Vacant / Expired"};
     let items=[];
     if(dashFilter==="expiring"){
       items=dashData.upcoming_expirations.filter(m=>daysUntil(m.current_term_end)<=90);
@@ -435,21 +435,42 @@ async function renderDashboard(reload=true){
     upHtml=dashBulkBar+hintText+groupHtml;
   }
 
-  // vacancies
-  const vacHtml=dashData.vacancies.length
-    ?dashData.vacancies.map(m=>{
-      const party=m.party&&m.party!=="Unknown"?`<span class="badge ${pBadge[m.party]}">${m.party}</span>`:"";
-      return`<div class="card vacancy"
-        style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
-        <div>
-          <div style="font-size:13px;font-weight:500">${m.person_name} ${party}</div>
-          <div style="font-size:11px;color:var(--mid)">${m.board}</div>
-          <div style="margin-top:3px"><span class="badge b-vacancy">${m.vacancy_type}</span></div>
-        </div>
-        <div style="font-size:11px;color:var(--mid)">${fmt(m.current_term_end)}</div>
-      </div>`;
-    }).join("")
-    :`<p style="font-size:13px;color:var(--mid);padding:8px 0">No current vacancies.</p>`;
+  // vacancies — grouped by term end date with checkboxes
+  function vacCard(m){
+    const party=m.party&&m.party!=="Unknown"?`<span class="badge ${pBadge[m.party]}">${m.party}</span>`:"";
+    const isSel=dashBulkSelected.has(m.id);
+    return`<div class="card vacancy ${isSel?"row-sel":""}"
+      style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center">
+      <input type="checkbox" ${isSel?"checked":""} onclick="event.stopPropagation();toggleDashSel(${m.id})" style="cursor:pointer;width:14px;height:14px;flex-shrink:0">
+      <div style="cursor:pointer" onclick="viewProfile(${m.person_id})">
+        <div style="font-size:13px;font-weight:500">${m.person_name} ${party}</div>
+        <div style="font-size:11px;color:var(--mid)">${m.board}</div>
+        <div style="margin-top:3px"><span class="badge b-vacancy">${m.vacancy_type}</span></div>
+      </div>
+      <div style="font-size:11px;color:var(--mid);text-align:right">${fmt(m.current_term_end)}</div>
+    </div>`;
+  }
+  let vacHtml;
+  if(!dashData.vacancies.length){
+    vacHtml=`<p style="font-size:13px;color:var(--mid);padding:8px 0">No current vacancies.</p>`;
+  } else {
+    const vacGroups={};
+    dashData.vacancies.forEach(m=>{
+      const k=m.current_term_end||'zz-no-date';
+      if(!vacGroups[k])vacGroups[k]=[];
+      vacGroups[k].push(m);
+    });
+    vacHtml=Object.entries(vacGroups).sort(([a],[b])=>a<b?-1:1).map(([date,members])=>{
+      const allSel=members.every(m=>dashBulkSelected.has(m.id));
+      return`<div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 4px;padding-bottom:4px;border-bottom:2px solid var(--border)">
+        <span style="font-size:11px;font-weight:600;color:var(--dark);text-transform:uppercase;letter-spacing:.04em">
+          <i class="fa-regular fa-calendar" style="color:var(--mid);margin-right:4px"></i>
+          ${date==='zz-no-date'?'No date':fmt(date)} &mdash; ${members.length} member${members.length!==1?'s':''}
+        </span>
+        <button class="btn" style="height:22px;font-size:10px;padding:1px 8px" onclick="selectVacGroup('${date}',${allSel})">${allSel?'Deselect all':'Select all'}</button>
+      </div>${members.map(m=>vacCard(m)).join('')}`;
+    }).join('');
+  }
 
   root.innerHTML=`
     <div class="stat-grid">${statHtml}</div>
@@ -465,7 +486,7 @@ async function renderDashboard(reload=true){
     <div class="section-title sect-hdr" onclick="toggleSect('vacancies')" style="margin-top:.5rem;margin-bottom:${sectCollapsed.vacancies?'0':'8px'}">
       <i class="fa-solid fa-chevron-${sectCollapsed.vacancies?'right':'down'}" style="font-size:10px;color:var(--mid)"></i>
       <i class="fa-solid fa-triangle-exclamation"></i>
-      <span>Vacancies &amp; flagged seats</span>
+      <span>Vacancies / Expired</span>
     </div>
     ${sectCollapsed.vacancies?"":vacHtml}`;
 }
@@ -645,6 +666,91 @@ async function renderPeople(){
   }
 }
 
+// ── roster ───────────────────────────────────────────────────────
+async function renderRoster(){
+  const root=document.getElementById("root");
+  if(!rosterBoard){
+    // Board selector
+    root.innerHTML=`<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>`;
+    try{
+      const mems=await api("/memberships");
+      const counts={};
+      BOARDS.forEach(b=>counts[b]=0);
+      mems.forEach(m=>{if(counts[m.board]!==undefined)counts[m.board]++;});
+      root.innerHTML=`
+        <div style="margin-bottom:1rem">
+          <h2 style="font-size:16px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px">Board &amp; Commission Roster</h2>
+          <p style="font-size:12px;color:var(--mid)">Select a board to view current members.</p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem">
+          ${BOARDS.map(b=>`
+            <button onclick="selectRosterBoard('${b.replace(/'/g,"\\'")}');"
+              style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);
+                padding:.75rem 1rem;text-align:left;cursor:pointer;box-shadow:var(--shadow);
+                transition:border-color .12s,background .12s;font-family:inherit"
+              onmouseover="this.style.borderColor='var(--navy)';this.style.background='var(--lblue)'"
+              onmouseout="this.style.borderColor='var(--border)';this.style.background='#fff'">
+              <div style="font-size:13px;font-weight:600;color:var(--dark)">${b}</div>
+              <div style="font-size:11px;color:var(--mid);margin-top:2px">${counts[b]||0} member${counts[b]!==1?'s':''}</div>
+            </button>`).join('')}
+        </div>`;
+    }catch(e){
+      root.innerHTML=`<div class="error-msg">Failed to load boards.</div>`;
+    }
+  } else {
+    // Member list for selected board
+    root.innerHTML=`<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>`;
+    try{
+      const mems=await api("/memberships?board="+encodeURIComponent(rosterBoard));
+      const regular=mems.filter(m=>m.role==="regular");
+      const alternate=mems.filter(m=>m.role==="alternate");
+
+      function memberCard(m){
+        const partyColor={Democrat:"#1d4ed8",Republican:"#b91c1c",Independent:"#059669"};
+        const hasParty=m.party&&m.party!=="Unknown"&&m.party!=="Unaffiliated"&&m.party!=="Other";
+        return`<div style="background:#fff;border:1px solid var(--border);border-radius:var(--radius);
+            padding:.85rem 1rem;box-shadow:var(--shadow)">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--dark)">${m.person_name}</div>
+              ${hasParty?`<div style="font-size:11px;font-weight:600;color:${partyColor[m.party]||'var(--mid)'};margin-top:1px">${m.party}</div>`:`<div style="font-size:11px;color:var(--mid);margin-top:1px">${m.party==="Unknown"?"Party not on file":m.party}</div>`}
+            </div>
+            ${m.role==="alternate"?`<span class="badge b-alt" style="flex-shrink:0">Alternate</span>`:""}
+          </div>
+          ${m.current_term_end?`<div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border);font-size:11px;color:var(--mid)">
+            <i class="fa-regular fa-calendar" style="margin-right:3px"></i>
+            Term ends <strong style="color:var(--dark)">${fmt(m.current_term_end)}</strong>
+            ${m.is_leaving_at_end?` &nbsp;<span class="badge b-leaving">Not seeking reappointment</span>`:""}
+          </div>`:""}
+        </div>`;
+      }
+
+      root.innerHTML=`
+        <button class="btn" onclick="rosterBoard=null;renderRoster()" style="margin-bottom:1rem">
+          <i class="fa-solid fa-arrow-left"></i> All Boards</button>
+        <h2 style="font-size:18px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.25rem">${rosterBoard}</h2>
+        <p style="font-size:12px;color:var(--mid);margin-bottom:1.25rem">${mems.length} member${mems.length!==1?'s':''} &nbsp;·&nbsp; ${regular.length} regular, ${alternate.length} alternate</p>
+
+        ${regular.length?`
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);margin-bottom:.5rem">Regular Members</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem;margin-bottom:1.25rem">
+            ${regular.map(m=>memberCard(m)).join('')}
+          </div>`:""}
+
+        ${alternate.length?`
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mid);margin-bottom:.5rem">Alternates</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem">
+            ${alternate.map(m=>memberCard(m)).join('')}
+          </div>`:""}
+
+        ${!mems.length?`<p style="font-size:13px;color:var(--mid)">No members on file for this board.</p>`:""}`;
+    }catch(e){
+      root.innerHTML=`<div class="error-msg">Failed to load roster.</div>`;
+    }
+  }
+}
+window.selectRosterBoard=b=>{rosterBoard=b;renderRoster();};
+
 // ── profile ──────────────────────────────────────────────────────
 async function renderProfile(pid){
   const root=document.getElementById("root");
@@ -776,7 +882,7 @@ function renderPersonModal(){
 }
 
 function renderBulkModal(){
-  const allMems=[...memberships,...(dashData?.upcoming_expirations||[])];
+  const allMems=[...memberships,...(dashData?.upcoming_expirations||[]),...(dashData?.vacancies||[])];
   const seen=new Set();
   const deduped=allMems.filter(m=>{if(seen.has(m.id))return false;seen.add(m.id);return true;});
   const sel=deduped.filter(m=>selected.has(m.id));
@@ -826,6 +932,11 @@ window.toggleDashSel=id=>{
 window.clearDashSel=()=>{dashBulkSelected.clear();renderDashboard(false);};
 window.selectDateGroup=(date,deselect)=>{
   (dashData?.upcoming_expirations||[]).filter(m=>(m.current_term_end||'zz-no-date')===date)
+    .forEach(m=>deselect?dashBulkSelected.delete(m.id):dashBulkSelected.add(m.id));
+  renderDashboard(false);
+};
+window.selectVacGroup=(date,deselect)=>{
+  (dashData?.vacancies||[]).filter(m=>(m.current_term_end||'zz-no-date')===date)
     .forEach(m=>deselect?dashBulkSelected.delete(m.id):dashBulkSelected.add(m.id));
   renderDashboard(false);
 };
@@ -933,13 +1044,13 @@ async function applyBulk(){
 }
 
 // ── routing ──────────────────────────────────────────────────────
-function setTab(t){tab=t;viewPid=null;search="";expanded.clear();if(t!=="dashboard"){dashFilter=null;dashBulkSelected.clear();}renderAll();}
+function setTab(t){tab=t;viewPid=null;search="";expanded.clear();if(t!=="dashboard"){dashFilter=null;dashBulkSelected.clear();}if(t!=="roster")rosterBoard=null;renderAll();}
 
 async function renderAll(){
   // update tab bar
+  const activeTab=tab==="profile"?"people":tab;
   document.querySelectorAll(".tab").forEach(el=>{
-    el.classList.toggle("active",
-      el.textContent.trim().toLowerCase().includes(tab==="profile"?"people":tab));
+    el.classList.toggle("active", el.textContent.trim().toLowerCase().includes(activeTab));
   });
 
   // bind modals
@@ -975,89 +1086,16 @@ async function renderAll(){
   if(tab==="dashboard") await renderDashboard();
   else if(tab==="tracker") await renderTracker();
   else if(tab==="profile"&&viewPid) await renderProfile(viewPid);
+  else if(tab==="roster") await renderRoster();
   else await renderPeople();
 }
 
-// ── auth ──────────────────────────────────────────────────────────
-async function checkAuth(){
-  try{ const r=await api('/auth-status'); isAdmin=r.admin; }
-  catch(e){ isAdmin=false; }
-  updateAuthUI();
-}
-
-function updateAuthUI(){
-  // show/hide admin-only tabs
-  document.getElementById('tab-tracker').style.display=isAdmin?'':'none';
-  document.getElementById('tab-people').style.display=isAdmin?'':'none';
-  // header button
-  const btn=document.getElementById('auth-btn');
-  if(isAdmin){
-    btn.innerHTML=`<button class="btn" onclick="doLogout()" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3);font-size:11px;height:26px"><i class="fa-solid fa-lock-open"></i> Admin — Log out</button>`;
-  } else {
-    btn.innerHTML=`<button class="btn" onclick="openLoginModal()" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3);font-size:11px;height:26px"><i class="fa-solid fa-lock"></i> Admin Login</button>`;
-  }
-  // if not admin and on admin-only tab, redirect to dashboard
-  if(!isAdmin && (tab==='tracker'||tab==='people'||tab==='profile')){
-    tab='dashboard';
-  }
-}
-
-function openLoginModal(){
-  document.getElementById('login-modal').style.display='flex';
-  setTimeout(()=>document.getElementById('login-pwd')?.focus(),50);
-}
-function closeLoginModal(){
-  document.getElementById('login-modal').style.display='none';
-  document.getElementById('login-pwd').value='';
-  document.getElementById('login-err').textContent='';
-}
-async function doLogin(){
-  const pwd=document.getElementById('login-pwd').value;
-  try{
-    await api('/login',{method:'POST',body:{password:pwd}});
-    isAdmin=true;
-    updateAuthUI();
-    closeLoginModal();
-    renderAll();
-  }catch(e){
-    document.getElementById('login-err').textContent='Incorrect password.';
-  }
-}
-async function doLogout(){
-  await api('/logout',{method:'POST'});
-  isAdmin=false;
-  tab='dashboard';
-  updateAuthUI();
-  renderAll();
-}
-
 // ── kick off ──────────────────────────────────────────────────────
-(async()=>{
-  const hdrSub=document.getElementById('hdr-sub');
-  if(hdrSub) hdrSub.textContent=new Date().toLocaleDateString('en-US',{weekday:'short',month:'long',day:'numeric',year:'numeric'});
-  await checkAuth();
-  await renderAll();
-})();
+const hdrSub=document.getElementById('hdr-sub');
+if(hdrSub) hdrSub.textContent=new Date().toLocaleDateString('en-US',{weekday:'short',month:'long',day:'numeric',year:'numeric'});
+renderAll();
 </script>
 
-<!-- Login modal -->
-<div id="login-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:8px;padding:1.5rem;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
-    <div style="font-size:15px;font-weight:700;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
-      Admin Login
-      <button onclick="closeLoginModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#999;line-height:1">×</button>
-    </div>
-    <label style="font-size:11px;font-weight:600;color:#595959;display:block;margin-bottom:4px">Password</label>
-    <input id="login-pwd" type="password" placeholder="Enter admin password"
-      style="width:100%;padding:8px;border:1px solid #E0E0E0;border-radius:6px;font-size:13px;margin-bottom:8px;font-family:inherit"
-      onkeydown="if(event.key==='Enter')doLogin()">
-    <p id="login-err" style="color:#A32D2D;font-size:12px;min-height:18px;margin-bottom:8px"></p>
-    <div style="display:flex;justify-content:flex-end;gap:8px">
-      <button onclick="closeLoginModal()" class="btn">Cancel</button>
-      <button onclick="doLogin()" class="btn btn-p">Log in</button>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
