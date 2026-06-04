@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boards & Commissions</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1F4E79;--blue:#2E75B6;--lblue:#D6E4F0;--teal:#1D9E75;--lteal:#D4EFEA;
+  --amber:#BA7517;--lamber:#FAEEDA;--red:#A32D2D;--lred:#FCEBEB;
+  --gray:#F5F5F5;--dgray:#E0E0E0;--white:#FFFFFF;--dark:#262626;--mid:#595959;
+  --border:#E0E0E0;--radius:6px;--shadow:0 1px 4px rgba(0,0,0,.08);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+  font-size:13px;color:var(--dark);background:#F8F9FA;min-height:100vh}
+.app-header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;
+  align-items:center;justify-content:space-between}
+.app-header h1{font-size:16px;font-weight:600;letter-spacing:.02em}
+.app-header span{font-size:11px;opacity:.7}
+.tab-bar{background:#fff;border-bottom:1px solid var(--border);
+  display:flex;padding:0 20px}
+.tab{font-size:13px;padding:10px 16px;cursor:pointer;color:var(--mid);
+  border-bottom:2px solid transparent;margin-bottom:-1px;background:none;
+  border-top:none;border-left:none;border-right:none;white-space:nowrap}
+.tab.active{color:var(--navy);border-bottom-color:var(--navy);font-weight:500}
+.tab:hover:not(.active){color:var(--dark)}
+.content{padding:16px 20px;max-width:1200px;margin:0 auto}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
+  gap:8px;margin-bottom:1rem}
+.stat{background:#fff;border-radius:var(--radius);padding:10px 13px;
+  box-shadow:var(--shadow);border:1px solid var(--border)}
+.stat-label{font-size:11px;color:var(--mid);margin-bottom:3px}
+.stat-val{font-size:20px;font-weight:600}
+.section-title{font-size:13px;font-weight:600;margin-bottom:8px;
+  display:flex;align-items:center;gap:6px;color:var(--dark)}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);
+  padding:10px 12px;margin-bottom:5px;box-shadow:var(--shadow)}
+.card.leaving{border-left:3px solid var(--amber)}
+.card.vacancy{border-left:3px solid var(--red)}
+.badge{display:inline-block;font-size:10px;font-weight:500;
+  padding:2px 6px;border-radius:99px;white-space:nowrap}
+.b-eligible{background:#E6F1FB;color:#0C447C}
+.b-approaching{background:var(--lamber);color:#633806}
+.b-finishing{background:var(--lamber);color:#633806}
+.b-limited{background:var(--lred);color:var(--red)}
+.b-unknown{background:var(--gray);color:var(--mid)}
+.b-active{background:#EAF3DE;color:#27500A}
+.b-expiring{background:var(--lamber);color:#633806}
+.b-expired{background:var(--lred);color:var(--red)}
+.b-none{background:var(--gray);color:var(--mid)}
+.b-alt{background:#E1F5EE;color:#085041}
+.b-dem{background:#E6F1FB;color:#0C447C}
+.b-rep{background:var(--lred);color:var(--red)}
+.b-ind{background:var(--gray);color:var(--mid)}
+.b-leaving{background:var(--lamber);color:#633806}
+.b-vacancy{background:var(--lred);color:var(--red)}
+.b-est{background:#EEEDFE;color:#3C3489}
+table{width:100%;border-collapse:collapse;font-size:12px;background:#fff;
+  border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+thead th{font-weight:600;font-size:11px;color:var(--mid);padding:8px 8px;
+  border-bottom:2px solid var(--border);text-align:left;
+  background:#FAFAFA;cursor:pointer;user-select:none;white-space:nowrap}
+thead th:hover{color:var(--dark)}
+tbody tr{border-bottom:1px solid var(--border)}
+tbody tr:hover{background:#FAFAFA}
+tbody tr.row-sel{background:#EEF4FB}
+td{padding:7px 8px;vertical-align:middle;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.xbtn{background:none;border:none;cursor:pointer;color:var(--mid);
+  padding:2px 5px;border-radius:4px;font-size:12px}
+.xbtn:hover{background:var(--gray);color:var(--dark)}
+.detail-bg{background:#FAFAFA}
+.detail-grid{padding:10px 12px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ds h4{font-size:10px;font-weight:600;color:var(--mid);text-transform:uppercase;
+  letter-spacing:.05em;margin-bottom:5px}
+.ds p{font-size:12px;line-height:1.7;color:var(--dark)}
+.da{padding:6px 12px 10px;display:flex;gap:6px;flex-wrap:wrap;
+  border-top:1px solid var(--border)}
+.tl-outer{margin:6px 0 0}
+.tl-wrap{position:relative;height:26px}
+.tl-track{position:absolute;top:12px;left:0;right:0;height:3px;
+  background:var(--dgray);border-radius:2px}
+.tl-zone{position:absolute;top:5px;height:16px;background:var(--lred);
+  opacity:.5;border-radius:2px}
+.tl-bar{position:absolute;top:5px;height:16px;border-radius:2px}
+.tl-full{background:var(--blue)}
+.tl-part{background:repeating-linear-gradient(45deg,var(--blue),var(--blue) 3px,#85B7EB 3px,#85B7EB 6px)}
+.tl-gap-bar{position:absolute;top:5px;height:16px;border-radius:2px;
+  background:#fff;border:1px dashed var(--dgray)}
+.tl-now{position:absolute;top:0;width:2px;background:var(--red);
+  border-radius:1px;height:26px}
+.tl-mark{position:absolute;top:0;width:1.5px;background:var(--amber);
+  border-radius:1px;height:26px}
+.tl-years{position:relative;height:18px;margin-top:2px}
+.tl-yr{position:absolute;font-size:10px;color:var(--mid);
+  transform:translateX(-50%);top:0;line-height:1}
+.da-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;
+  padding-top:8px;border-top:1px solid var(--border)}
+.btn{font-size:12px;padding:4px 10px;border-radius:var(--radius);
+  border:1px solid var(--border);background:#fff;color:var(--dark);
+  cursor:pointer;display:inline-flex;align-items:center;gap:4px;height:28px}
+.btn:hover{background:var(--gray)}
+.btn-p{background:var(--navy);color:#fff;border-color:var(--navy);
+  height:30px;padding:4px 12px;font-size:12px}
+.btn-p:hover{opacity:.88}
+.btn-g{background:var(--teal);color:#fff;border-color:var(--teal);
+  height:30px;padding:4px 12px;font-size:12px}
+.btn-g:hover{opacity:.88}
+.btn-d{color:var(--red)}
+.toolbar{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:.9rem;align-items:center}
+.toolbar select,.toolbar input[type=text]{font-size:12px;padding:4px 8px;
+  border-radius:var(--radius);border:1px solid var(--border);
+  background:#fff;color:var(--dark);height:30px}
+.toolbar input[type=text]{min-width:140px;flex:1}
+.bulk-bar{display:flex;align-items:center;gap:8px;background:#EEF4FB;
+  border:1px solid #BDD5EE;border-radius:var(--radius);padding:7px 12px;
+  margin-bottom:.9rem;font-size:12px;color:var(--navy)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;
+  align-items:flex-start;justify-content:center;z-index:100;padding-top:30px}
+.modal{background:#fff;border-radius:8px;border:1px solid var(--border);
+  padding:1.25rem 1.5rem;width:580px;max-width:97vw;max-height:85vh;overflow-y:auto;
+  box-shadow:0 8px 32px rgba(0,0,0,.15)}
+.mtitle{font-size:15px;font-weight:600;margin-bottom:1rem;
+  display:flex;justify-content:space-between;align-items:center}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:8px 13px}
+.fg .full{grid-column:1/-1}
+.fg label{display:block;font-size:11px;color:var(--mid);
+  font-weight:600;margin-bottom:3px}
+.fg input,.fg select,.fg textarea{width:100%;font-size:13px;padding:6px 8px;
+  border-radius:var(--radius);border:1px solid var(--border);
+  background:#fff;color:var(--dark)}
+.fg textarea{resize:vertical;min-height:50px;font-size:12px}
+.fg .crow{grid-column:1/-1;display:flex;align-items:center;gap:7px;padding:3px 0}
+.fg .crow label{font-size:13px;color:var(--dark);font-weight:400;
+  display:inline;margin:0}
+.mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:1rem}
+.trw{margin-top:10px}
+.trl{font-size:11px;font-weight:600;color:var(--mid);text-transform:uppercase;
+  letter-spacing:.04em;margin-bottom:5px}
+.tr{display:flex;align-items:center;gap:5px;margin-bottom:4px}
+.tr input[type=date]{flex:1;font-size:11px;padding:3px 6px;border-radius:var(--radius);
+  border:1px solid var(--border);background:#fff;color:var(--dark)}
+.tr select{font-size:11px;padding:3px 6px;border-radius:var(--radius);
+  border:1px solid var(--border);background:#fff;color:var(--dark)}
+.atrb{font-size:11px;color:var(--mid);background:none;
+  border:1px dashed var(--dgray);border-radius:var(--radius);
+  padding:3px 9px;cursor:pointer;margin-top:2px}
+.atrb:hover{background:var(--gray)}
+.rlist{max-height:180px;overflow-y:auto;border:1px solid var(--border);
+  border-radius:var(--radius);margin-bottom:9px}
+.ri{display:flex;align-items:center;gap:7px;padding:7px 10px;
+  border-bottom:1px solid var(--border);font-size:13px}
+.ri:last-child{border-bottom:none}
+.warn-box{background:var(--lamber);border:1px solid var(--amber);
+  border-radius:var(--radius);padding:8px 11px;margin-bottom:9px;
+  font-size:12px;color:#633806;line-height:1.6}
+.days-bar{height:3px;border-radius:2px;background:var(--dgray);
+  margin-top:2px;overflow:hidden}
+.days-fill{height:100%;border-radius:2px}
+.person-card{background:#fff;border:1px solid var(--border);
+  border-radius:var(--radius);padding:10px 12px;margin-bottom:6px;
+  cursor:pointer;box-shadow:var(--shadow)}
+.person-card:hover{background:var(--gray)}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--lblue);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:600;font-size:12px;color:var(--navy);flex-shrink:0}
+.profile-hdr{display:flex;align-items:center;gap:12px;margin-bottom:12px;
+  padding-bottom:10px;border-bottom:1px solid var(--border)}
+.notice{font-size:12px;color:var(--mid);background:var(--gray);
+  border:1px solid var(--dgray);border-radius:var(--radius);
+  padding:6px 10px;margin-bottom:.9rem;line-height:1.6}
+.loading{text-align:center;padding:40px;color:var(--mid)}
+.error-msg{background:var(--lred);color:var(--red);border:1px solid var(--red);
+  border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;font-size:13px}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1><i class="fa-solid fa-users-gear"></i> Boards & Commissions</h1>
+  <span id="hdr-sub">Management System</span>
+</div>
+
+<div class="tab-bar">
+  <button class="tab active" onclick="setTab('dashboard')">
+    <i class="fa-solid fa-gauge"></i> Dashboard</button>
+  <button class="tab" onclick="setTab('tracker')">
+    <i class="fa-solid fa-list"></i> Tracker</button>
+  <button class="tab" onclick="setTab('people')">
+    <i class="fa-solid fa-users"></i> People</button>
+</div>
+
+<div class="content" id="root">
+  <div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>
+</div>
+
+<script>
+// ── constants ────────────────────────────────────────────────────
+const BOARDS=["Affordable Housing Committee","Audit Committee","Blight Review Board",
+  "Charter Revision Commission","Conservation Commission","EMS Commission",
+  "Ethics Board","Finance, Board of","Fire Commission","Health & Human Services",
+  "Historic District Commission","Historical Review Committee","Housing Authority",
+  "Inland Wetlands","Parking","Parks & Recreation","Planning & Zoning Commission",
+  "Police","TEDAC","Utilities Commission","ZBA"];
+const PARTIES=["Democrat","Republican","Independent","Unaffiliated","Other","Unknown"];
+const LIMIT=12;
+const today=new Date();
+
+// ── state ────────────────────────────────────────────────────────
+let tab="dashboard",viewPid=null;
+let expanded=new Set(),selected=new Set();
+let sortCol="current_term_end",sortDir=1;
+let fBoard="",fStatus="",fLimit="",fRole="",search="";
+let showModal=false,showBulk=false,showPersonModal=false;
+let editMid=null,editPid=null,newMbPid=null,newMbBoard="";
+let modalTerms=[];
+let dashData=null,memberships=[],persons=[];
+
+// ── api helpers ──────────────────────────────────────────────────
+async function api(path,opts={}){
+  try{
+    const r=await fetch('/api'+path,{
+      headers:{'Content-Type':'application/json'},
+      ...opts,
+      body:opts.body?JSON.stringify(opts.body):undefined
+    });
+    const data=await r.json();
+    if(!r.ok) throw data;
+    return data;
+  }catch(e){
+    console.error('API error',path,e);
+    throw e;
+  }
+}
+
+// ── helpers ──────────────────────────────────────────────────────
+const fmt=d=>{if(!d)return"—";const[y,m,dy]=d.split("-");return`${+m}/${+dy}/${y}`};
+const initials=n=>n.split(/\s+/).filter(Boolean).map(w=>w[0]).join("").slice(0,2).toUpperCase();
+const pBadge={Democrat:"b-dem",Republican:"b-rep",Independent:"b-ind",
+  Unaffiliated:"b-ind",Other:"b-ind",Unknown:"b-none"};
+const pShort={Democrat:"D",Republican:"R",Independent:"I",
+  Unaffiliated:"U",Other:"O",Unknown:"?"};
+
+function eligBadge(e){
+  const map={eligible:"b-eligible Eligible",approaching:"b-approaching Approaching limit",
+    finishing:"b-finishing Finishing term",limited:"b-limited Term limited",
+    unknown:"b-unknown Unknown"};
+  const [cls,lbl]=(map[e]||"b-unknown Unknown").split(" ");
+  return`<span class="badge ${cls}">${lbl}</span>`;
+}
+function tsBadge(s){
+  const map={active:"b-active Active",expiring:"b-expiring Expiring",
+    expired:"b-expired Expired",none:"b-none No date"};
+  const [cls,lbl]=(map[s]||"b-none —").split(" ");
+  return`<span class="badge ${cls}">${lbl}</span>`;
+}
+function daysUntil(d){return d?Math.round((new Date(d)-today)/86400000):null}
+function canReappoint(m){return(m.eligibility==="eligible"||m.eligibility==="approaching")&&!m.is_leaving_at_end}
+
+function renderTL(m){
+  const terms=(m.terms||[]).slice().sort((a,b)=>new Date(a.start)-new Date(b.start));
+  if(!terms.length)return`<div style="font-size:11px;color:var(--mid)">No history recorded.</div>`;
+  const allStart=new Date(terms[0].start);
+  const lastEnd=terms[terms.length-1].end?new Date(terms[terms.length-1].end):today;
+  const lDate=m.limit_date?new Date(m.limit_date):null;
+  const vEnd=new Date(Math.max(lastEnd,today,lDate||0));
+  vEnd.setMonth(vEnd.getMonth()+10);
+  const vStart=new Date(allStart);vStart.setFullYear(vStart.getFullYear()-1);
+  const sp=vEnd-vStart;const p=d=>(new Date(d)-vStart)/sp*100;
+  let bars="";
+  for(let i=0;i<terms.length;i++){
+    const t=terms[i];const l=p(t.start),r=t.end?p(t.end):p(today);const w=Math.max(r-l,.4);
+    bars+=`<div class="tl-bar ${t.type==="vacancy_fill"?"tl-part":"tl-full"}"
+      style="left:${l}%;width:${w}%"
+      title="${t.type==="vacancy_fill"?"Vacancy fill":"Full term"}: ${fmt(t.start)}–${fmt(t.end)}"></div>`;
+    if(i<terms.length-1&&terms[i].end){
+      const gl=r,gr=p(terms[i+1].start),gw=gr-gl;
+      if(gw>.3){
+        const gy=(new Date(terms[i+1].start)-new Date(terms[i].end))/(365.25*24*3600*1000);
+        bars+=`<div class="tl-gap-bar" style="left:${gl}%;width:${gw}%"
+          title="Gap: ${gy.toFixed(1)}y${gy>=3?" — resets clock":""}"></div>`;
+      }
+    }
+  }
+  const nx=p(today);const lx=lDate?p(lDate):null;
+  const lzone=lx&&lx<100?`<div class="tl-zone" style="left:${Math.max(0,lx)}%;right:0"></div>`:"";
+  const sy=vStart.getFullYear(),ey=vEnd.getFullYear();
+  const step=(ey-sy)>14?10:5;let tks="";
+  for(let y=Math.ceil(sy/step)*step;y<=ey;y+=step){
+    const x=p(new Date(y,0,1));if(x>2&&x<96)tks+=`<span class="tl-yr" style="left:${x}%">${y}</span>`;
+  }
+  return`<div class="tl-outer">
+    <div class="tl-wrap">${lzone}<div class="tl-track"></div>${bars}
+      ${nx>2&&nx<98?`<div class="tl-now" style="left:${nx}%"></div>`:""}
+      ${lx&&lx>2&&lx<98?`<div class="tl-mark" style="left:${lx}%"></div>`:""}
+    </div>
+    <div class="tl-years">${tks}</div>
+  </div>`;
+}
+
+// ── dashboard ────────────────────────────────────────────────────
+async function renderDashboard(){
+  const root=document.getElementById("root");
+  root.innerHTML=`<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>`;
+  try{
+    dashData=await api("/dashboard");
+    const s=dashData.stats;
+    const pc=dashData.party_counts||{};
+    const partyHtml=Object.entries(pc).map(([p,c])=>
+      `<span class="badge ${pBadge[p]||"b-none"}">${p}: ${c}</span>`).join(" ");
+    const upHtml=dashData.upcoming_expirations.length
+      ?dashData.upcoming_expirations.map(m=>{
+        const d=daysUntil(m.current_term_end);
+        const isLeaving=m.is_leaving_at_end;
+        const isLim=m.eligibility==="limited"||m.eligibility==="finishing";
+        const party=m.party&&m.party!=="Unknown"?`<span class="badge ${pBadge[m.party]}">${m.party}</span>`:"";
+        return`<div class="card ${isLeaving?"leaving":isLim?"vacancy":""}"
+          style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;cursor:pointer"
+          onclick="viewProfile(${m.person_id})">
+          <div>
+            <div style="font-size:13px;font-weight:500">${m.person_name}
+              ${m.role==="alternate"?`<span class="badge b-alt">Alt</span>`:""}
+              ${party}</div>
+            <div style="font-size:11px;color:var(--mid)">${m.board}</div>
+            <div style="margin-top:3px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+              ${canReappoint(m)?`<span class="badge b-eligible">Eligible for reappt.</span>`:""}
+              ${isLim?`<span class="badge b-limited">Cannot be reappointed</span>`:""}
+              ${isLeaving?`<span class="badge b-leaving">Indicated leaving</span>`:""}
+              ${m.yrs_at_end!=null?`<span style="font-size:11px;color:var(--mid)">${m.yrs_at_end}y at end</span>`:""}
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:12px;color:var(--mid)">${fmt(m.current_term_end)}</div>
+            <div style="font-size:11px;font-weight:600;color:${d<=30?"var(--red)":d<=90?"var(--amber)":"var(--mid)"}">${d}d</div>
+          </div>
+        </div>`;
+      }).join("")
+      :`<p style="font-size:13px;color:var(--mid);padding:8px 0">No terms expiring in the next 6 months.</p>`;
+    const vacHtml=dashData.vacancies.length
+      ?dashData.vacancies.map(m=>{
+        const party=m.party&&m.party!=="Unknown"?`<span class="badge ${pBadge[m.party]}">${m.party}</span>`:"";
+        return`<div class="card vacancy"
+          style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center">
+          <div>
+            <div style="font-size:13px;font-weight:500">${m.person_name} ${party}</div>
+            <div style="font-size:11px;color:var(--mid)">${m.board}</div>
+            <div style="margin-top:3px"><span class="badge b-vacancy">${m.vacancy_type}</span></div>
+          </div>
+          <div style="font-size:11px;color:var(--mid)">${fmt(m.current_term_end)}</div>
+        </div>`;
+      }).join("")
+      :`<p style="font-size:13px;color:var(--mid);padding:8px 0">No current vacancies.</p>`;
+    root.innerHTML=`
+      <div class="stat-grid">
+        <div class="stat"><div class="stat-label">Total members</div><div class="stat-val">${s.total}</div></div>
+        <div class="stat"><div class="stat-label">Expiring ≤90d</div><div class="stat-val" style="color:var(--amber)">${s.expiring_90}</div></div>
+        <div class="stat"><div class="stat-label">Term limited</div><div class="stat-val" style="color:var(--red)">${s.limited}</div></div>
+        <div class="stat"><div class="stat-label">Near 12yr limit</div><div class="stat-val" style="color:var(--amber)">${s.approaching}</div></div>
+        <div class="stat"><div class="stat-label">Open / flagged</div><div class="stat-val" style="color:var(--red)">${s.vacancies}</div></div>
+      </div>
+      ${partyHtml?`<div style="margin-bottom:.9rem;display:flex;gap:5px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:11px;color:var(--mid)">Party:</span>${partyHtml}</div>`:""}
+      <div class="section-title"><i class="fa-solid fa-calendar-days"></i>Upcoming expirations — next 6 months</div>
+      ${upHtml}
+      <div class="section-title" style="margin-top:1rem"><i class="fa-solid fa-triangle-exclamation"></i>Vacancies & flagged seats</div>
+      ${vacHtml}`;
+  }catch(e){
+    root.innerHTML=`<div class="error-msg">Failed to load dashboard. Make sure the server is running.</div>`;
+  }
+}
+
+// ── tracker ──────────────────────────────────────────────────────
+async function loadMemberships(){
+  const params=new URLSearchParams();
+  if(fBoard) params.set("board",fBoard);
+  if(fRole)  params.set("role",fRole);
+  memberships=await api("/memberships?"+params);
+}
+async function renderTracker(){
+  const root=document.getElementById("root");
+  root.innerHTML=`<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>`;
+  try{
+    await loadMemberships();
+    let rows=[...memberships];
+    if(fStatus) rows=rows.filter(m=>m.term_status===fStatus);
+    if(fLimit)  rows=rows.filter(m=>fLimit==="limited"?(m.eligibility==="limited"||m.eligibility==="finishing"):m.eligibility===fLimit);
+    if(search){const q=search.toLowerCase();rows=rows.filter(m=>m.person_name.toLowerCase().includes(q)||m.board.toLowerCase().includes(q));}
+    rows.sort((a,b)=>{
+      let av=a[sortCol]??'',bv=b[sortCol]??'';
+      if(typeof av==="string")av=av.toLowerCase(),bv=bv.toLowerCase();
+      return av>bv?sortDir:av<bv?-sortDir:0;
+    });
+    const sc=c=>sortCol===c?(sortDir>0?" ↑":" ↓"):"";
+    const eligibleRows=rows.filter(m=>canReappoint(m));
+    const bulkBar=selected.size>0?`<div class="bulk-bar">
+      <i class="fa-solid fa-check"></i>
+      <span>${selected.size} selected</span>
+      <button class="btn btn-g" onclick="openBulk()"><i class="fa-solid fa-rotate"></i> Reappoint selected</button>
+      <button class="btn" onclick="clearSel()">Clear</button></div>`:"";
+    const selAllCb=eligibleRows.length?`<input type="checkbox" id="sel-all" title="Select all eligible"
+      onchange="toggleSelAll(this.checked,${JSON.stringify(eligibleRows.map(m=>m.id))})">`:` `;
+    const rowsHtml=rows.map(m=>{
+      const isOpen=expanded.has(m.id);const isSel=selected.has(m.id);
+      const isElig=canReappoint(m);const d=daysUntil(m.current_term_end);
+      const barC=m.term_status==="expired"?"var(--red)":m.term_status==="expiring"?"var(--amber)":"var(--teal)";
+      const yrBarC=m.eligibility==="limited"||m.eligibility==="finishing"?"var(--red)":m.eligibility==="approaching"?"var(--amber)":"var(--blue)";
+      const yrPct=m.yrs_at_end!=null?Math.min(100,m.yrs_at_end/LIMIT*100):0;
+      const assumed=m.terms&&m.terms.length===1&&m.terms[0].assumed;
+      return`<tr class="${isSel?"row-sel":""}">
+        <td><input type="checkbox" ${isSel?"checked":""} ${!isElig?"disabled":""} onchange="toggleSel(${m.id},this.checked)"></td>
+        <td><button class="xbtn" onclick="tog(${m.id})">${isOpen?"−":"+"}</button></td>
+        <td style="font-weight:500" title="${m.person_name}">${m.person_name}
+          ${m.is_leaving_at_end?`<span class="badge b-leaving" style="font-size:9px">leaving</span>`:""}
+          ${m.role==="alternate"?`<span class="badge b-alt" style="font-size:9px">Alt</span>`:""}</td>
+        <td style="color:var(--mid)" title="${m.board}">${m.board}</td>
+        <td><span class="badge ${pBadge[m.party]||"b-none"}">${pShort[m.party]||"?"}</span></td>
+        <td>${fmt(m.current_term_end)}
+          ${m.current_term_end&&m.term_status!=="expired"?`<div class="days-bar"><div class="days-fill" style="width:${Math.min(100,Math.max(0,((today-new Date(m.terms?.[0]?.start||m.current_term_end))/(new Date(m.current_term_end)-new Date(m.terms?.[0]?.start||m.current_term_end)))*100)).toFixed(0)}%;background:${barC}"></div></div>`:""}
+          ${m.term_status==="expiring"?`<div style="font-size:10px;color:var(--amber)">${d}d</div>`:""}
+          ${m.term_status==="expired"?`<div style="font-size:10px;color:var(--red)">${Math.abs(d)}d ago</div>`:""}</td>
+        <td>${tsBadge(m.term_status)}</td>
+        <td>${m.yrs_at_end!=null?`<div style="font-size:12px;font-weight:500;color:${m.eligibility==="limited"||m.eligibility==="finishing"?"var(--red)":m.eligibility==="approaching"?"var(--amber)":"var(--dark)"}">${m.yrs_at_end}y</div>
+          <div style="font-size:10px;color:var(--mid)">${m.yrs_today}y today</div>
+          <div class="days-bar"><div class="days-fill" style="width:${yrPct.toFixed(0)}%;background:${yrBarC}"></div></div>`:"-"}</td>
+        <td>${eligBadge(m.eligibility)}${assumed?` <span class="badge b-est" style="font-size:9px">est.</span>`:""}</td>
+      </tr>
+      ${isOpen?`<tr><td colspan="9" class="detail-bg"><div class="detail-grid">
+        <div class="ds">
+          <h4>Service & timeline</h4>
+          <p>Run from: ${fmt(m.run_start)}<br>
+          Today: ${m.yrs_today!=null?m.yrs_today+"y":"?"}<br>
+          At term end: ${m.yrs_at_end!=null?m.yrs_at_end+"y":"?"}<br>
+          12yr limit: ${fmt(m.limit_date)}
+          ${m.eligible_to_return||m.computed_etr?`<br><span style="color:var(--red)">Eligible to return: ${fmt(m.eligible_to_return||m.computed_etr)}</span>`:""}</p>
+          ${renderTL(m)}
+        </div>
+        <div class="ds">
+          <h4>History (${(m.terms||[]).length} term${(m.terms||[]).length!==1?"s":""})</h4>
+          <p>${(m.terms||[]).length?[...m.terms].sort((a,b)=>new Date(a.start)-new Date(b.start)).map((t,i)=>`<span style="display:block">Term ${i+1}: ${fmt(t.start)} → ${fmt(t.end)}
+            <span style="font-size:10px;color:var(--mid)">${t.type==="vacancy_fill"?"vacancy fill":""}${t.assumed?"(est.)":""}</span></span>`).join(""):"None entered."}</p>
+          <h4 style="margin-top:8px">Person</h4>
+          <p><a href="#" style="color:var(--blue)" onclick="viewProfile(${m.person_id});return false">${m.person_name} — view profile →</a></p>
+        </div>
+      </div>
+      <div class="da">
+        <button class="btn" onclick="openEditMb(${m.id})"><i class="fa-solid fa-pen"></i> Edit</button>
+        ${isElig?`<button class="btn btn-g" onclick="quickReappoint(${m.id})"><i class="fa-solid fa-rotate"></i> Reappoint</button>`:""}
+        <button class="btn" onclick="toggleLeaving(${m.id})">${m.is_leaving_at_end?`<i class="fa-solid fa-user-check"></i> Clear leaving`:`<i class="fa-solid fa-user-minus"></i> Mark leaving`}</button>
+        <button class="btn btn-d" onclick="delMb(${m.id})"><i class="fa-solid fa-trash"></i></button>
+      </div></td></tr>`:""}`;
+    }).join("");
+    root.innerHTML=`
+      <div class="toolbar">
+        <input type="text" id="srch" placeholder="Search…" value="${search.replace(/"/g,'&quot;')}">
+        <select id="fb"><option value="">All boards</option>${BOARDS.map(b=>`<option value="${b}"${fBoard===b?" selected":""}>${b}</option>`).join("")}</select>
+        <select id="fs"><option value="">All statuses</option><option value="active">Active</option><option value="expiring">Expiring ≤90d</option><option value="expired">Expired</option></select>
+        <select id="fr"><option value="">All roles</option><option value="regular">Regular</option><option value="alternate">Alternate</option></select>
+        <select id="fl"><option value="">All eligibility</option><option value="limited">Term limited</option><option value="approaching">Approaching</option><option value="eligible">Eligible</option></select>
+        <button class="btn btn-p" id="addMbBtn"><i class="fa-solid fa-plus"></i> Add</button>
+      </div>
+      ${bulkBar}
+      <div class="notice"><i class="fa-solid fa-circle-info"></i> Consecutive service shows projected years at end of current term, with today's count below.</div>
+      <table><thead><tr>
+        <th style="width:24px">${selAllCb}</th><th style="width:22px"></th>
+        <th style="width:17%" onclick="ss('person_name')">Member${sc('person_name')}</th>
+        <th style="width:18%" onclick="ss('board')">Board${sc('board')}</th>
+        <th style="width:5%">Party</th>
+        <th style="width:12%" onclick="ss('current_term_end')">Term ends${sc('current_term_end')}</th>
+        <th style="width:8%">Status</th>
+        <th style="width:12%" onclick="ss('yrs_at_end')">Consec. service${sc('yrs_at_end')}</th>
+        <th style="width:12%">12yr eligibility</th>
+      </tr></thead><tbody>${rowsHtml}</tbody></table>`;
+    document.getElementById("srch")?.addEventListener("input",e=>{search=e.target.value;renderTracker()});
+    document.getElementById("fb")?.addEventListener("change",e=>{fBoard=e.target.value;renderTracker()});
+    document.getElementById("fs")?.addEventListener("change",e=>{fStatus=e.target.value;renderTracker()});
+    document.getElementById("fr")?.addEventListener("change",e=>{fRole=e.target.value;renderTracker()});
+    document.getElementById("fl")?.addEventListener("change",e=>{fLimit=e.target.value;renderTracker()});
+    document.getElementById("addMbBtn")?.addEventListener("click",()=>{editMid=null;modalTerms=[];showModal=true;renderAll()});
+  }catch(e){
+    root.innerHTML=`<div class="error-msg">Failed to load tracker data.</div>`;
+  }
+}
+
+// ── people ───────────────────────────────────────────────────────
+async function renderPeople(){
+  const root=document.getElementById("root");
+  root.innerHTML=`<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>`;
+  try{
+    const q=search?`?q=${encodeURIComponent(search)}`:"";
+    persons=await api("/persons"+q);
+    root.innerHTML=`
+      <div class="toolbar">
+        <input type="text" id="psrch" placeholder="Search people…" value="${search.replace(/"/g,'&quot;')}">
+        <button class="btn btn-p" id="addPBtn"><i class="fa-solid fa-user-plus"></i> Add person</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        ${persons.map(p=>`<div class="person-card" onclick="viewProfile(${p.id})">
+          <div style="display:flex;align-items:center;gap:9px">
+            <div class="avatar">${initials(p.name)}</div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                ${p.name} ${p.party&&p.party!=="Unknown"?`<span class="badge ${pBadge[p.party]}">${p.party}</span>`:""}</div>
+              <div style="font-size:11px;color:var(--mid)">${p.membership_count} membership${p.membership_count!==1?"s":""}</div>
+            </div>
+          </div>
+        </div>`).join("")}
+      </div>`;
+    document.getElementById("psrch")?.addEventListener("input",e=>{search=e.target.value;renderPeople()});
+    document.getElementById("addPBtn")?.addEventListener("click",()=>{editPid=null;showPersonModal=true;renderAll()});
+  }catch(e){
+    root.innerHTML=`<div class="error-msg">Failed to load people.</div>`;
+  }
+}
+
+// ── profile ──────────────────────────────────────────────────────
+async function renderProfile(pid){
+  const root=document.getElementById("root");
+  root.innerHTML=`<div class="loading"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>`;
+  try{
+    const p=await api("/persons/"+pid);
+    const mbs=p.memberships||[];
+    const party=p.party&&p.party!=="Unknown"?`<span class="badge ${pBadge[p.party]}">${p.party}</span>`:"";
+    const mbHtml=mbs.map(m=>{
+      const isElig=canReappoint(m);
+      return`<div style="background:var(--gray);border-radius:var(--radius);padding:10px 12px;margin-bottom:6px;border:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:4px">
+          <div><span style="font-size:13px;font-weight:500">${m.board}</span>
+            ${m.role==="alternate"?` <span class="badge b-alt">Alt</span>`:""}
+            ${m.eligible_to_return&&new Date(m.eligible_to_return)>today?` <span class="badge b-limited">Cooling off until ${fmt(m.eligible_to_return)}</span>`:""}</div>
+          <div style="display:flex;gap:4px">${tsBadge(m.term_status)} ${eligBadge(m.eligibility)}</div>
+        </div>
+        <div style="font-size:12px;color:var(--mid);margin-bottom:4px">
+          Term ends: ${fmt(m.current_term_end)} &nbsp;·&nbsp;
+          ${m.yrs_at_end!=null?m.yrs_at_end+"y at end":""} &nbsp;·&nbsp;
+          12yr limit: ${fmt(m.limit_date)}</div>
+        ${renderTL(m)}
+        <div style="margin-top:6px;font-size:11px;color:var(--mid)">
+          ${(m.terms||[]).length} term${(m.terms||[]).length!==1?"s":""}:
+          ${[...(m.terms||[])].sort((a,b)=>new Date(a.start)-new Date(b.start))
+            .map((t,i)=>`<span style="margin-right:8px">Term ${i+1}: ${fmt(t.start)}–${fmt(t.end)}${t.type==="vacancy_fill"?" (vacancy fill)":""}${t.assumed?" (est.)":""}</span>`).join("")}
+        </div>
+        <div class="da-acts">
+          <button class="btn" onclick="openEditMb(${m.id})"><i class="fa-solid fa-pen"></i> Edit</button>
+          ${isElig?`<button class="btn btn-g" onclick="quickReappoint(${m.id})"><i class="fa-solid fa-rotate"></i> Reappoint</button>`:""}
+          <button class="btn" onclick="toggleLeaving(${m.id})">${m.is_leaving_at_end?`<i class="fa-solid fa-user-check"></i> Clear leaving`:`<i class="fa-solid fa-user-minus"></i> Mark leaving`}</button>
+        </div>
+      </div>`;
+    }).join("")||`<p style="font-size:12px;color:var(--mid)">No board memberships on file.</p>`;
+    root.innerHTML=`
+      <button class="btn" onclick="setTab('people')" style="margin-bottom:.8rem">
+        <i class="fa-solid fa-arrow-left"></i> All people</button>
+      <div class="profile-hdr">
+        <div class="avatar" style="width:44px;height:44px;font-size:15px">${initials(p.name)}</div>
+        <div style="flex:1">
+          <div style="font-size:16px;font-weight:600">${p.name} ${party}</div>
+          <div style="font-size:12px;color:var(--mid);margin-top:2px">${mbs.length} board membership${mbs.length!==1?"s":""}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-p" onclick="openEditPerson(${p.id})"><i class="fa-solid fa-pen"></i> Edit</button>
+          <button class="btn btn-g" onclick="openAddMbForPerson(${p.id})"><i class="fa-solid fa-plus"></i> Add board</button>
+        </div>
+      </div>
+      <div class="section-title"><i class="fa-solid fa-list"></i> Board memberships</div>
+      ${mbHtml}`;
+  }catch(e){
+    root.innerHTML=`<div class="error-msg">Failed to load profile.</div>`;
+  }
+}
+
+// ── modals ───────────────────────────────────────────────────────
+function trHtml(t,i){
+  return`<div class="tr" id="tr-${i}">
+    <span style="font-size:10px;color:var(--mid);min-width:16px">${i+1}.</span>
+    <input type="date" value="${t.start||""}" onchange="updT(${i},'start',this.value)">
+    <span style="font-size:10px;color:var(--mid)">→</span>
+    <input type="date" value="${t.end||""}" onchange="updT(${i},'end',this.value)">
+    <select onchange="updT(${i},'type',this.value)">
+      <option value="full_term"${t.type==="full_term"?" selected":""}>Full term</option>
+      <option value="vacancy_fill"${t.type==="vacancy_fill"?" selected":""}>Vacancy fill</option>
+    </select>
+    <button class="xbtn btn-d" onclick="rmT(${i})">×</button>
+  </div>`;
+}
+
+function renderMbModal(){
+  const m=editMid!=null?memberships.find(x=>x.id===editMid):null;
+  if(m&&!modalTerms.length) modalTerms=[...(m.terms||[]).map(t=>({...t}))];
+  const pid=m?m.person_id:newMbPid;
+  const etr=m?.eligible_to_return||m?.computed_etr;
+  const etrBlock=etr&&new Date(etr)>today;
+  return`<div class="modal-bg" id="mBg"><div class="modal">
+    <div class="mtitle">${m?"Edit membership":"Add board membership"}
+      <button class="xbtn" onclick="closeM()" style="font-size:20px">×</button></div>
+    ${etrBlock?`<div class="warn-box"><i class="fa-solid fa-triangle-exclamation"></i>
+      <strong>Cooling-off period active.</strong> This person served 12+ consecutive years on this board.
+      Not eligible to return until <strong>${fmt(etr)}</strong>.</div>`:""}
+    <div class="fg">
+      <div><label>Board / Commission</label>
+        <select id="f-board">${BOARDS.map(b=>`<option${(m?.board||newMbBoard)===b?" selected":""}>${b}</option>`).join("")}</select></div>
+      <div><label>Current term end date</label>
+        <input type="date" id="f-end" value="${m?.current_term_end||""}"></div>
+      <div><label>Role</label>
+        <select id="f-role">
+          <option value="regular"${m?.role!=="alternate"?" selected":""}>Regular member</option>
+          <option value="alternate"${m?.role==="alternate"?" selected":""}>Alternate</option>
+        </select></div>
+      <div></div>
+      <div class="crow"><input type="checkbox" id="f-leaving"${m?.is_leaving_at_end?" checked":""}>
+        <label for="f-leaving">Will not seek reappointment</label></div>
+      <div class="full"><label>Notes</label><textarea id="f-notes">${m?.notes||""}</textarea></div>
+    </div>
+    <div class="trw">
+      <div class="trl">Appointment history <span style="font-weight:400;font-size:10px">— one row per term, oldest first</span></div>
+      <div id="term-rows">${modalTerms.map((t,i)=>trHtml(t,i)).join("")}</div>
+      <button class="atrb" id="atb"><i class="fa-solid fa-plus" style="font-size:10px"></i> Add term</button>
+    </div>
+    <div class="mfoot">
+      <button class="btn" id="cancelBtn">Cancel</button>
+      <button class="btn btn-p" id="saveBtn">${m?"Save":"Add membership"}</button>
+    </div>
+  </div></div>`;
+}
+
+function renderPersonModal(){
+  const p=editPid!=null?persons.find(x=>x.id===editPid):null;
+  return`<div class="modal-bg" id="mBg"><div class="modal">
+    <div class="mtitle">${p?"Edit person":"Add person"}
+      <button class="xbtn" onclick="closeM()" style="font-size:20px">×</button></div>
+    <div class="fg">
+      <div class="full"><label>Full name</label>
+        <input id="fp-name" value="${(p?.name||"").replace(/"/g,'&quot;')}"></div>
+      <div><label>Party affiliation</label>
+        <select id="fp-party">${PARTIES.map(pt=>`<option${(p?.party||"Unknown")===pt?" selected":""}>${pt}</option>`).join("")}</select></div>
+      <div></div>
+      <div class="full"><label>Notes</label><textarea id="fp-notes">${p?.notes||""}</textarea></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn" id="cancelBtn">Cancel</button>
+      <button class="btn btn-p" id="saveBtn">${p?"Save":"Create person"}</button>
+    </div>
+  </div></div>`;
+}
+
+function renderBulkModal(){
+  const sel=memberships.filter(m=>selected.has(m.id));
+  return`<div class="modal-bg" id="mBg"><div class="modal">
+    <div class="mtitle"><span><i class="fa-solid fa-rotate"></i> Bulk reappointment</span>
+      <button class="xbtn" onclick="closeM()" style="font-size:20px">×</button></div>
+    <p style="font-size:13px;color:var(--mid);margin-bottom:10px">Apply the same new term to ${sel.length} selected member${sel.length!==1?"s":""}.</p>
+    <div class="rlist">${sel.map(m=>`<div class="ri">
+      <div style="flex:1"><div style="font-weight:500">${m.person_name} ${m.role==="alternate"?`<span class="badge b-alt">Alt</span>`:""}</div>
+      <div style="font-size:11px;color:var(--mid)">${m.board}</div></div>
+      <span class="badge ${pBadge[m.party]||"b-none"}">${m.party||"?"}</span></div>`).join("")}</div>
+    <div class="fg">
+      <div><label>New term start</label><input type="date" id="br-start"></div>
+      <div><label>New term end</label><input type="date" id="br-end"></div>
+      <div><label>Term type</label>
+        <select id="br-type">
+          <option value="full_term">Full term</option>
+          <option value="vacancy_fill">Vacancy fill</option>
+        </select></div>
+    </div>
+    <p style="font-size:11px;color:var(--mid);margin-top:8px">
+      <i class="fa-solid fa-circle-info"></i> Leaving flags will be cleared. Eligible-to-return dates are recalculated automatically.</p>
+    <div class="mfoot">
+      <button class="btn" id="cancelBtn">Cancel</button>
+      <button class="btn btn-g" id="saveBtn"><i class="fa-solid fa-rotate"></i> Apply</button>
+    </div>
+  </div></div>`;
+}
+
+// ── actions ──────────────────────────────────────────────────────
+window.updT=(i,f,v)=>{if(modalTerms[i])modalTerms[i][f]=v};
+window.rmT=i=>{modalTerms.splice(i,1);document.getElementById("term-rows").innerHTML=modalTerms.map((t,j)=>trHtml(t,j)).join("")};
+window.tog=id=>{expanded.has(id)?expanded.delete(id):expanded.add(id);renderTracker()};
+window.ss=c=>{sortDir=sortCol===c?-sortDir:1;sortCol=c;renderTracker()};
+window.toggleSel=(id,on)=>{on?selected.add(id):selected.delete(id);renderTracker()};
+window.toggleSelAll=(on,ids)=>{ids.forEach(id=>on?selected.add(id):selected.delete(id));renderTracker()};
+window.clearSel=()=>{selected.clear();renderTracker()};
+window.openBulk=()=>{showBulk=true;showModal=false;showPersonModal=false;renderAll()};
+window.quickReappoint=id=>{selected.clear();selected.add(id);showBulk=true;showModal=false;renderAll()};
+window.openEditMb=id=>{
+  editMid=id;
+  const m=memberships.find(x=>x.id===id);
+  modalTerms=m?[...(m.terms||[]).map(t=>({...t}))]:[]; 
+  showModal=true;showBulk=false;showPersonModal=false;renderAll()};
+window.openEditPerson=pid=>{editPid=pid;showPersonModal=true;showModal=false;showBulk=false;renderAll()};
+window.closeM=()=>{showModal=false;showBulk=false;showPersonModal=false;editMid=null;editPid=null;newMbPid=null;newMbBoard="";modalTerms=[];renderAll()};
+window.viewProfile=pid=>{viewPid=pid;tab="profile";search="";renderAll()};
+window.openAddMbForPerson=pid=>{newMbPid=pid;newMbBoard="";editMid=null;modalTerms=[];showModal=true;renderAll()};
+window.toggleLeaving=async id=>{
+  const m=memberships.find(x=>x.id===id);if(!m)return;
+  await api("/memberships/"+id,{method:"PUT",body:{...m,is_leaving_at_end:!m.is_leaving_at_end}});
+  if(tab==="tracker")renderTracker();
+  else if(tab==="profile"&&viewPid)renderProfile(viewPid);
+};
+window.delMb=async id=>{
+  if(!confirm("Remove this membership?"))return;
+  await api("/memberships/"+id,{method:"DELETE"});
+  expanded.delete(id);selected.delete(id);
+  renderTracker();
+};
+
+async function saveMb(){
+  const board=document.getElementById("f-board").value;
+  const endDate=document.getElementById("f-end").value||null;
+  const terms=modalTerms.filter(t=>t.start);
+  if(terms.length===1&&!terms[0].end&&endDate) terms[0].end=endDate;
+  const body={
+    board,role:document.getElementById("f-role").value,
+    is_leaving_at_end:document.getElementById("f-leaving").checked,
+    notes:document.getElementById("f-notes").value,terms
+  };
+  if(editMid!=null){
+    await api("/memberships/"+editMid,{method:"PUT",body});
+  }else{
+    if(!newMbPid){alert("No person selected.");return;}
+    body.person_id=newMbPid;
+    try{
+      await api("/memberships",{method:"POST",body});
+    }catch(e){
+      if(e.error==="cooling_off"){
+        if(!confirm(`Warning: ${e.message}\n\nProceed anyway?`))return;
+        await api("/memberships",{method:"POST",body:{...body,override_cooling_off:true}});
+      }else throw e;
+    }
+  }
+  closeM();
+}
+
+async function savePersonModal(){
+  const name=document.getElementById("fp-name").value.trim();
+  if(!name){alert("Name is required.");return;}
+  const body={name,party:document.getElementById("fp-party").value,
+    notes:document.getElementById("fp-notes").value};
+  if(editPid!=null){
+    await api("/persons/"+editPid,{method:"PUT",body});
+  }else{
+    await api("/persons",{method:"POST",body});
+  }
+  closeM();
+}
+
+async function applyBulk(){
+  const start=document.getElementById("br-start").value;
+  const end=document.getElementById("br-end").value;
+  if(!start||!end){alert("Please enter both dates.");return;}
+  const body={membership_ids:[...selected],start,end,
+    type:document.getElementById("br-type").value};
+  try{
+    await api("/memberships/bulk-reappoint",{method:"POST",body});
+  }catch(e){
+    if(e.error==="cooling_off_violations"){
+      const names=e.warnings.map(w=>`${w.person} (${w.board}) — eligible from ${fmt(w.eligible_to_return)}`).join("\n");
+      if(!confirm(`Warning: cooling-off violations:\n\n${names}\n\nProceed anyway?`))return;
+      await api("/memberships/bulk-reappoint",{method:"POST",body:{...body,override_cooling_off:true}});
+    }else throw e;
+  }
+  selected.clear();showBulk=false;
+  renderTracker();
+}
+
+// ── routing ──────────────────────────────────────────────────────
+function setTab(t){tab=t;viewPid=null;search="";expanded.clear();renderAll();}
+
+async function renderAll(){
+  // update tab bar
+  document.querySelectorAll(".tab").forEach(el=>{
+    el.classList.toggle("active",
+      el.textContent.trim().toLowerCase().includes(tab==="profile"?"people":tab));
+  });
+
+  // bind modals
+  if(showModal){
+    document.getElementById("root").insertAdjacentHTML("afterend",renderMbModal());
+    document.getElementById("mBg")?.addEventListener("click",e=>{if(e.target.id==="mBg")closeM()});
+    document.getElementById("saveBtn")?.addEventListener("click",saveMb);
+    document.getElementById("cancelBtn")?.addEventListener("click",closeM);
+    document.getElementById("atb")?.addEventListener("click",()=>{
+      modalTerms.push({start:"",end:"",type:"full_term",assumed:false});
+      document.getElementById("term-rows").innerHTML=modalTerms.map((t,i)=>trHtml(t,i)).join("");
+    });
+    return;
+  }
+  if(showPersonModal){
+    document.getElementById("root").insertAdjacentHTML("afterend",renderPersonModal());
+    document.getElementById("mBg")?.addEventListener("click",e=>{if(e.target.id==="mBg")closeM()});
+    document.getElementById("saveBtn")?.addEventListener("click",savePersonModal);
+    document.getElementById("cancelBtn")?.addEventListener("click",closeM);
+    return;
+  }
+  if(showBulk){
+    document.getElementById("root").insertAdjacentHTML("afterend",renderBulkModal());
+    document.getElementById("mBg")?.addEventListener("click",e=>{if(e.target.id==="mBg")closeM()});
+    document.getElementById("saveBtn")?.addEventListener("click",applyBulk);
+    document.getElementById("cancelBtn")?.addEventListener("click",closeM);
+    return;
+  }
+
+  // remove any stray modals
+  document.querySelectorAll(".modal-bg").forEach(el=>el.remove());
+
+  if(tab==="dashboard") await renderDashboard();
+  else if(tab==="tracker") await renderTracker();
+  else if(tab==="profile"&&viewPid) await renderProfile(viewPid);
+  else await renderPeople();
+}
+
+// kick off
+renderAll();
+</script>
+</body>
+</html>
