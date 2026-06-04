@@ -226,6 +226,7 @@ let modalTerms=[];
 let dashData=null,memberships=[],persons=[];
 let dashFilter=null,dashFilterCache={};
 let sectCollapsed={upcoming:true,vacancies:true};
+let currentEditMembership=null;
 
 // ── api helpers ──────────────────────────────────────────────────
 async function api(path,opts={}){
@@ -659,8 +660,7 @@ function trHtml(t,i){
 }
 
 function renderMbModal(){
-  const m=editMid!=null?memberships.find(x=>x.id===editMid):null;
-  if(m&&!modalTerms.length) modalTerms=[...(m.terms||[]).map(t=>({...t}))];
+  const m=editMid!=null?currentEditMembership:null;
   const pid=m?m.person_id:newMbPid;
   const etr=m?.eligible_to_return||m?.computed_etr;
   const etrBlock=etr&&new Date(etr)>today;
@@ -755,13 +755,18 @@ window.toggleSelAll=(on,ids)=>{ids.forEach(id=>on?selected.add(id):selected.dele
 window.clearSel=()=>{selected.clear();renderTracker()};
 window.openBulk=()=>{showBulk=true;showModal=false;showPersonModal=false;renderAll()};
 window.quickReappoint=id=>{selected.clear();selected.add(id);showBulk=true;showModal=false;renderAll()};
-window.openEditMb=id=>{
+window.openEditMb=async id=>{
   editMid=id;
-  const m=memberships.find(x=>x.id===id);
-  modalTerms=m?[...(m.terms||[]).map(t=>({...t}))]:[]; 
-  showModal=true;showBulk=false;showPersonModal=false;renderAll()};
+  try{
+    currentEditMembership=await api('/memberships/'+id);
+    modalTerms=[...(currentEditMembership.terms||[]).map(t=>({...t}))];
+  }catch(e){
+    currentEditMembership=memberships.find(x=>x.id===id)||null;
+    modalTerms=currentEditMembership?[...(currentEditMembership.terms||[]).map(t=>({...t}))]:[];
+  }
+  showModal=true;showBulk=false;showPersonModal=false;renderAll();};
 window.openEditPerson=pid=>{editPid=pid;showPersonModal=true;showModal=false;showBulk=false;renderAll()};
-window.closeM=()=>{showModal=false;showBulk=false;showPersonModal=false;editMid=null;editPid=null;newMbPid=null;newMbBoard="";modalTerms=[];renderAll()};
+window.closeM=()=>{showModal=false;showBulk=false;showPersonModal=false;editMid=null;editPid=null;newMbPid=null;newMbBoard="";modalTerms=[];currentEditMembership=null;renderAll()};
 window.viewProfile=pid=>{viewPid=pid;tab="profile";search="";renderAll()};
 window.openAddMbForPerson=pid=>{newMbPid=pid;newMbBoard="";editMid=null;modalTerms=[];showModal=true;renderAll()};
 window.toggleLeaving=async id=>{
