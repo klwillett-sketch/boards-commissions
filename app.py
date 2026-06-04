@@ -316,9 +316,8 @@ def update_membership(mid):
     notes             = data.get('notes',             existing['notes'])
 
     _, _, yrs_at_end, _, etr = calc_consec(terms)
-    # only overwrite etr if newly computed
-    if etr is None and existing['eligible_to_return']:
-        etr = existing['eligible_to_return']
+    # Always use the freshly computed etr so that a gap resetting the clock
+    # properly clears a previously stored cooling-off date.
 
     db.execute(
         "UPDATE board_memberships SET role=?,terms=?,is_leaving_at_end=?,"
