@@ -5,19 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Boards & Commissions</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --navy:#1F4E79;--blue:#2E75B6;--lblue:#D6E4F0;--teal:#1D9E75;--lteal:#D4EFEA;
+  --navy:#0d2b4e;--blue:#2E75B6;--lblue:#D6E4F0;--teal:#2a9d8f;--lteal:#d4efed;
   --amber:#BA7517;--lamber:#FAEEDA;--red:#A32D2D;--lred:#FCEBEB;
-  --gray:#F5F5F5;--dgray:#E0E0E0;--white:#FFFFFF;--dark:#262626;--mid:#595959;
+  --gray:#F5F5F5;--dgray:#E0E0E0;--white:#FFFFFF;--dark:#1a1a1a;--mid:#595959;
   --border:#E0E0E0;--radius:6px;--shadow:0 1px 4px rgba(0,0,0,.08);
 }
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+body{font-family:'Montserrat',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
   font-size:13px;color:var(--dark);background:#F8F9FA;min-height:100vh}
-.app-header{background:var(--navy);color:#fff;padding:12px 20px;display:flex;
-  align-items:center;justify-content:space-between}
-.app-header h1{font-size:16px;font-weight:600;letter-spacing:.02em}
+.app-header{background:var(--navy);color:#fff;padding:10px 20px;display:flex;
+  align-items:center;justify-content:space-between;border-bottom:3px solid var(--teal)}
+.app-header h1{font-size:15px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
 .app-header span{font-size:11px;opacity:.7}
 .tab-bar{background:#fff;border-bottom:1px solid var(--border);
   display:flex;padding:0 20px}
@@ -33,8 +34,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
   box-shadow:var(--shadow);border:1px solid var(--border)}
 .stat-label{font-size:11px;color:var(--mid);margin-bottom:3px}
 .stat-val{font-size:20px;font-weight:600}
-.section-title{font-size:13px;font-weight:600;margin-bottom:8px;
-  display:flex;align-items:center;gap:6px;color:var(--dark)}
+.section-title{font-size:11px;font-weight:700;margin-bottom:8px;
+  display:flex;align-items:center;gap:6px;color:var(--dark);
+  text-transform:uppercase;letter-spacing:.06em}
 .card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);
   padding:10px 12px;margin-bottom:5px;box-shadow:var(--shadow)}
 .card.leaving{border-left:3px solid var(--amber)}
@@ -186,16 +188,22 @@ td{padding:7px 8px;vertical-align:middle;overflow:hidden;
 <body>
 
 <div class="app-header">
-  <h1><i class="fa-solid fa-users-gear"></i> Boards & Commissions</h1>
-  <span id="hdr-sub">Management System</span>
+  <div>
+    <div style="font-size:10px;font-weight:600;opacity:.7;letter-spacing:.12em;text-transform:uppercase;margin-bottom:1px">New Canaan, Connecticut</div>
+    <h1><i class="fa-solid fa-users-gear"></i> Boards &amp; Commissions</h1>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <span id="hdr-sub" style="font-size:11px;opacity:.7"></span>
+    <div id="auth-btn"></div>
+  </div>
 </div>
 
-<div class="tab-bar">
+<div class="tab-bar" id="tab-bar">
   <button class="tab active" onclick="setTab('dashboard')">
     <i class="fa-solid fa-gauge"></i> Dashboard</button>
-  <button class="tab" onclick="setTab('tracker')">
+  <button class="tab" id="tab-tracker" onclick="setTab('tracker')">
     <i class="fa-solid fa-list"></i> Tracker</button>
-  <button class="tab" onclick="setTab('people')">
+  <button class="tab" id="tab-people" onclick="setTab('people')">
     <i class="fa-solid fa-users"></i> People</button>
 </div>
 
@@ -228,6 +236,7 @@ let dashFilter=null,dashFilterCache={};
 let sectCollapsed={upcoming:true,vacancies:true};
 let currentEditMembership=null;
 let dashBulkSelected=new Set();
+let isAdmin=false;
 
 // ── api helpers ──────────────────────────────────────────────────
 async function api(path,opts={}){
@@ -370,40 +379,61 @@ async function renderDashboard(reload=true){
       </div>${itemsHtml}</div>`;
   }
 
-  // upcoming expirations
+  // upcoming expirations — grouped by term end date
+  function expCard(m){
+    const d=daysUntil(m.current_term_end);
+    const isLeaving=m.is_leaving_at_end;
+    const isLim=m.eligibility==="limited"||m.eligibility==="finishing";
+    const party=m.party&&m.party!=="Unknown"?`<span class="badge ${pBadge[m.party]}">${m.party}</span>`:"";
+    const isSel=dashBulkSelected.has(m.id);
+    return`<div class="card ${isLeaving?"leaving":isLim?"vacancy":""} ${isSel?"row-sel":""}"
+      style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center">
+      <input type="checkbox" ${isSel?"checked":""} onclick="event.stopPropagation();toggleDashSel(${m.id})" style="cursor:pointer;width:14px;height:14px;flex-shrink:0">
+      <div style="cursor:pointer" onclick="viewProfile(${m.person_id})">
+        <div style="font-size:13px;font-weight:500">${m.person_name}
+          ${m.role==="alternate"?`<span class="badge b-alt">Alt</span>`:""}${party}</div>
+        <div style="font-size:11px;color:var(--mid)">${m.board}</div>
+        <div style="margin-top:3px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+          ${canReappoint(m)?`<span class="badge b-eligible">Eligible for reappt.</span>`:""}
+          ${isLim?`<span class="badge b-limited">Cannot be reappointed</span>`:""}
+          ${isLeaving?`<span class="badge b-leaving">Indicated leaving</span>`:""}
+          ${m.yrs_at_end!=null?`<span style="font-size:11px;color:var(--mid)">${m.yrs_at_end}y at end</span>`:""}
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:12px;color:var(--mid)">${fmt(m.current_term_end)}</div>
+        <div style="font-size:11px;font-weight:600;color:${d<=30?"var(--red)":d<=90?"var(--amber)":"var(--mid)"}">${d}d</div>
+      </div></div>`;
+  }
   const dashBulkBar=dashBulkSelected.size>0?`<div class="bulk-bar">
     <i class="fa-solid fa-check"></i>
     <span>${dashBulkSelected.size} selected</span>
     <button class="btn btn-g" onclick="openDashBulk()"><i class="fa-solid fa-rotate"></i> Reappoint selected</button>
     <button class="btn" onclick="clearDashSel()">Clear</button>
   </div>`:"";
-  const upHtml=dashData.upcoming_expirations.length
-    ?dashBulkBar+dashData.upcoming_expirations.map(m=>{
-      const d=daysUntil(m.current_term_end);
-      const isLeaving=m.is_leaving_at_end;
-      const isLim=m.eligibility==="limited"||m.eligibility==="finishing";
-      const party=m.party&&m.party!=="Unknown"?`<span class="badge ${pBadge[m.party]}">${m.party}</span>`:"";
-      const isSel=dashBulkSelected.has(m.id);
-      return`<div class="card ${isLeaving?"leaving":isLim?"vacancy":""} ${isSel?"row-sel":""}"
-        style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center">
-        <input type="checkbox" ${isSel?"checked":""} onclick="event.stopPropagation();toggleDashSel(${m.id})" style="cursor:pointer;width:14px;height:14px;flex-shrink:0">
-        <div style="cursor:pointer" onclick="viewProfile(${m.person_id})">
-          <div style="font-size:13px;font-weight:500">${m.person_name}
-            ${m.role==="alternate"?`<span class="badge b-alt">Alt</span>`:""}${party}</div>
-          <div style="font-size:11px;color:var(--mid)">${m.board}</div>
-          <div style="margin-top:3px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
-            ${canReappoint(m)?`<span class="badge b-eligible">Eligible for reappt.</span>`:""}
-            ${isLim?`<span class="badge b-limited">Cannot be reappointed</span>`:""}
-            ${isLeaving?`<span class="badge b-leaving">Indicated leaving</span>`:""}
-            ${m.yrs_at_end!=null?`<span style="font-size:11px;color:var(--mid)">${m.yrs_at_end}y at end</span>`:""}
-          </div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:12px;color:var(--mid)">${fmt(m.current_term_end)}</div>
-          <div style="font-size:11px;font-weight:600;color:${d<=30?"var(--red)":d<=90?"var(--amber)":"var(--mid)"}">${d}d</div>
-        </div></div>`;
-    }).join("")
-    :`<p style="font-size:13px;color:var(--mid);padding:8px 0">No terms expiring in the next 6 months.</p>`;
+  const hintText=dashBulkSelected.size===0?`<p style="font-size:11px;color:var(--mid);margin-bottom:8px;font-style:italic"><i class="fa-solid fa-circle-info"></i> Check members to select for bulk reappointment.</p>`:"";
+  let upHtml;
+  if(!dashData.upcoming_expirations.length){
+    upHtml=`<p style="font-size:13px;color:var(--mid);padding:8px 0">No terms expiring in the next 6 months.</p>`;
+  } else {
+    const groups={};
+    dashData.upcoming_expirations.forEach(m=>{
+      const k=m.current_term_end||'zz-no-date';
+      if(!groups[k])groups[k]=[];
+      groups[k].push(m);
+    });
+    const groupHtml=Object.entries(groups).sort(([a],[b])=>a<b?-1:1).map(([date,members])=>{
+      const allSel=members.every(m=>dashBulkSelected.has(m.id));
+      return`<div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 4px;padding-bottom:4px;border-bottom:2px solid var(--border)">
+        <span style="font-size:11px;font-weight:600;color:var(--dark);text-transform:uppercase;letter-spacing:.04em">
+          <i class="fa-regular fa-calendar" style="color:var(--mid);margin-right:4px"></i>
+          Expires ${date==='zz-no-date'?'No date':fmt(date)} &mdash; ${members.length} member${members.length!==1?'s':''}
+        </span>
+        <button class="btn" style="height:22px;font-size:10px;padding:1px 8px" onclick="selectDateGroup('${date}',${allSel})">${allSel?'Deselect all':'Select all'}</button>
+      </div>${members.map(m=>expCard(m)).join('')}`;
+    }).join('');
+    upHtml=dashBulkBar+hintText+groupHtml;
+  }
 
   // vacancies
   const vacHtml=dashData.vacancies.length
@@ -528,12 +558,14 @@ async function renderTracker(){
           <p><a href="#" style="color:var(--blue)" onclick="viewProfile(${m.person_id});return false">${m.person_name} — view profile →</a></p>
         </div>
       </div>
-      <div class="da">
+      ${isAdmin?`<div class="da">
         <button class="btn" onclick="openEditMb(${m.id})"><i class="fa-solid fa-pen"></i> Edit</button>
         ${isElig?`<button class="btn btn-g" onclick="quickReappoint(${m.id})"><i class="fa-solid fa-rotate"></i> Reappoint</button>`:""}
         <button class="btn" onclick="toggleLeaving(${m.id})">${m.is_leaving_at_end?`<i class="fa-solid fa-user-check"></i> Clear leaving`:`<i class="fa-solid fa-user-minus"></i> Mark leaving`}</button>
         <button class="btn btn-d" onclick="delMb(${m.id})"><i class="fa-solid fa-trash"></i></button>
-      </div></td></tr>`:""}`;
+      </div>`:''}
+      </td></tr>`:""}`;
+
     }).join("");
     root.innerHTML=`
       <div class="toolbar">
@@ -584,7 +616,7 @@ async function renderPeople(){
     root.innerHTML=`
       <div class="toolbar">
         <input type="text" id="psrch" placeholder="Search people…" value="${search.replace(/"/g,'&quot;')}">
-        <button class="btn btn-p" id="addPBtn"><i class="fa-solid fa-user-plus"></i> Add person</button>
+        ${isAdmin?`<button class="btn btn-p" id="addPBtn"><i class="fa-solid fa-user-plus"></i> Add person</button>`:''}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
         ${persons.map(p=>`<div class="person-card" onclick="viewProfile(${p.id})">
@@ -640,12 +672,12 @@ async function renderProfile(pid){
           ${[...(m.terms||[])].sort((a,b)=>new Date(a.start)-new Date(b.start))
             .map((t,i)=>`<span style="margin-right:8px">Term ${i+1}: ${fmt(t.start)}–${fmt(t.end)}${t.type==="vacancy_fill"?" (vacancy fill)":""}${t.assumed?" (est.)":""}</span>`).join("")}
         </div>
-        <div class="da-acts">
+        ${isAdmin?`<div class="da-acts">
           <button class="btn" onclick="openEditMb(${m.id})"><i class="fa-solid fa-pen"></i> Edit</button>
           ${isElig?`<button class="btn btn-g" onclick="quickReappoint(${m.id})"><i class="fa-solid fa-rotate"></i> Reappoint</button>`:""}
           <button class="btn" onclick="toggleLeaving(${m.id})">${m.is_leaving_at_end?`<i class="fa-solid fa-user-check"></i> Clear leaving`:`<i class="fa-solid fa-user-minus"></i> Mark leaving`}</button>
           <button class="btn btn-d" onclick="delMbFromProfile(${m.id},'${p.id}')"><i class="fa-solid fa-trash"></i> Remove board</button>
-        </div>
+        </div>`:''}
       </div>`;
     }).join("")||`<p style="font-size:12px;color:var(--mid)">No board memberships on file.</p>`;
     root.innerHTML=`
@@ -657,11 +689,11 @@ async function renderProfile(pid){
           <div style="font-size:16px;font-weight:600">${p.name} ${party}</div>
           <div style="font-size:12px;color:var(--mid);margin-top:2px">${mbs.length} board membership${mbs.length!==1?"s":""}</div>
         </div>
-        <div style="display:flex;gap:6px">
+        ${isAdmin?`<div style="display:flex;gap:6px">
           <button class="btn btn-p" onclick="openEditPerson(${p.id})"><i class="fa-solid fa-pen"></i> Edit</button>
           <button class="btn btn-g" onclick="openAddMbForPerson(${p.id})"><i class="fa-solid fa-plus"></i> Add board</button>
           ${mbs.length===0?`<button class="btn btn-d" onclick="deletePersonAction(${p.id},'${p.name.replace(/'/g,"\\'")}')"><i class="fa-solid fa-trash"></i> Delete person</button>`:`<button class="btn" disabled title="Remove all board memberships before deleting" style="opacity:.4;cursor:not-allowed"><i class="fa-solid fa-trash"></i> Delete person</button>`}
-        </div>
+        </div>`:`<span style="font-size:11px;color:var(--mid);font-style:italic"><i class="fa-solid fa-lock" style="font-size:10px"></i> Read only</span>`}
       </div>
       <div class="section-title"><i class="fa-solid fa-list"></i> Board memberships</div>
       ${mbHtml}`;
@@ -792,6 +824,11 @@ window.toggleDashSel=id=>{
   renderDashboard(false);
 };
 window.clearDashSel=()=>{dashBulkSelected.clear();renderDashboard(false);};
+window.selectDateGroup=(date,deselect)=>{
+  (dashData?.upcoming_expirations||[]).filter(m=>(m.current_term_end||'zz-no-date')===date)
+    .forEach(m=>deselect?dashBulkSelected.delete(m.id):dashBulkSelected.add(m.id));
+  renderDashboard(false);
+};
 window.quickReappoint=id=>{selected.clear();selected.add(id);showBulk=true;showModal=false;renderAll()};
 window.openEditMb=async id=>{
   editMid=id;
@@ -941,8 +978,86 @@ async function renderAll(){
   else await renderPeople();
 }
 
-// kick off
-renderAll();
+// ── auth ──────────────────────────────────────────────────────────
+async function checkAuth(){
+  try{ const r=await api('/auth-status'); isAdmin=r.admin; }
+  catch(e){ isAdmin=false; }
+  updateAuthUI();
+}
+
+function updateAuthUI(){
+  // show/hide admin-only tabs
+  document.getElementById('tab-tracker').style.display=isAdmin?'':'none';
+  document.getElementById('tab-people').style.display=isAdmin?'':'none';
+  // header button
+  const btn=document.getElementById('auth-btn');
+  if(isAdmin){
+    btn.innerHTML=`<button class="btn" onclick="doLogout()" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3);font-size:11px;height:26px"><i class="fa-solid fa-lock-open"></i> Admin — Log out</button>`;
+  } else {
+    btn.innerHTML=`<button class="btn" onclick="openLoginModal()" style="background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.3);font-size:11px;height:26px"><i class="fa-solid fa-lock"></i> Admin Login</button>`;
+  }
+  // if not admin and on admin-only tab, redirect to dashboard
+  if(!isAdmin && (tab==='tracker'||tab==='people'||tab==='profile')){
+    tab='dashboard';
+  }
+}
+
+function openLoginModal(){
+  document.getElementById('login-modal').style.display='flex';
+  setTimeout(()=>document.getElementById('login-pwd')?.focus(),50);
+}
+function closeLoginModal(){
+  document.getElementById('login-modal').style.display='none';
+  document.getElementById('login-pwd').value='';
+  document.getElementById('login-err').textContent='';
+}
+async function doLogin(){
+  const pwd=document.getElementById('login-pwd').value;
+  try{
+    await api('/login',{method:'POST',body:{password:pwd}});
+    isAdmin=true;
+    updateAuthUI();
+    closeLoginModal();
+    renderAll();
+  }catch(e){
+    document.getElementById('login-err').textContent='Incorrect password.';
+  }
+}
+async function doLogout(){
+  await api('/logout',{method:'POST'});
+  isAdmin=false;
+  tab='dashboard';
+  updateAuthUI();
+  renderAll();
+}
+
+// ── kick off ──────────────────────────────────────────────────────
+(async()=>{
+  const hdrSub=document.getElementById('hdr-sub');
+  if(hdrSub) hdrSub.textContent=new Date().toLocaleDateString('en-US',{weekday:'short',month:'long',day:'numeric',year:'numeric'});
+  await checkAuth();
+  await renderAll();
+})();
 </script>
+
+<!-- Login modal -->
+<div id="login-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:8px;padding:1.5rem;width:320px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+    <div style="font-size:15px;font-weight:700;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
+      Admin Login
+      <button onclick="closeLoginModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:#999;line-height:1">×</button>
+    </div>
+    <label style="font-size:11px;font-weight:600;color:#595959;display:block;margin-bottom:4px">Password</label>
+    <input id="login-pwd" type="password" placeholder="Enter admin password"
+      style="width:100%;padding:8px;border:1px solid #E0E0E0;border-radius:6px;font-size:13px;margin-bottom:8px;font-family:inherit"
+      onkeydown="if(event.key==='Enter')doLogin()">
+    <p id="login-err" style="color:#A32D2D;font-size:12px;min-height:18px;margin-bottom:8px"></p>
+    <div style="display:flex;justify-content:flex-end;gap:8px">
+      <button onclick="closeLoginModal()" class="btn">Cancel</button>
+      <button onclick="doLogin()" class="btn btn-p">Log in</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
