@@ -227,6 +227,7 @@ let dashData=null,memberships=[],persons=[];
 let dashFilter=null,dashFilterCache={};
 let sectCollapsed={upcoming:true,vacancies:true};
 let currentEditMembership=null;
+let dashBulkSelected=new Set();
 
 // ── api helpers ──────────────────────────────────────────────────
 async function api(path,opts={}){
@@ -370,16 +371,23 @@ async function renderDashboard(reload=true){
   }
 
   // upcoming expirations
+  const dashBulkBar=dashBulkSelected.size>0?`<div class="bulk-bar">
+    <i class="fa-solid fa-check"></i>
+    <span>${dashBulkSelected.size} selected</span>
+    <button class="btn btn-g" onclick="openDashBulk()"><i class="fa-solid fa-rotate"></i> Reappoint selected</button>
+    <button class="btn" onclick="clearDashSel()">Clear</button>
+  </div>`:"";
   const upHtml=dashData.upcoming_expirations.length
-    ?dashData.upcoming_expirations.map(m=>{
+    ?dashBulkBar+dashData.upcoming_expirations.map(m=>{
       const d=daysUntil(m.current_term_end);
       const isLeaving=m.is_leaving_at_end;
       const isLim=m.eligibility==="limited"||m.eligibility==="finishing";
       const party=m.party&&m.party!=="Unknown"?`<span class="badge ${pBadge[m.party]}">${m.party}</span>`:"";
-      return`<div class="card ${isLeaving?"leaving":isLim?"vacancy":""}"
-        style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;cursor:pointer"
-        onclick="viewProfile(${m.person_id})">
-        <div>
+      const isSel=dashBulkSelected.has(m.id);
+      return`<div class="card ${isLeaving?"leaving":isLim?"vacancy":""} ${isSel?"row-sel":""}"
+        style="display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center">
+        <input type="checkbox" ${isSel?"checked":""} onclick="event.stopPropagation();toggleDashSel(${m.id})" style="cursor:pointer;width:14px;height:14px;flex-shrink:0">
+        <div style="cursor:pointer" onclick="viewProfile(${m.person_id})">
           <div style="font-size:13px;font-weight:500">${m.person_name}
             ${m.role==="alternate"?`<span class="badge b-alt">Alt</span>`:""}${party}</div>
           <div style="font-size:11px;color:var(--mid)">${m.board}</div>
@@ -419,15 +427,15 @@ async function renderDashboard(reload=true){
       <span style="font-size:11px;color:var(--mid)">Party:</span>${partyHtml}</div>`:""}
     ${filterHtml}
     <div class="section-title sect-hdr" onclick="toggleSect('upcoming')" style="margin-bottom:${sectCollapsed.upcoming?'0':'8px'}">
+      <i class="fa-solid fa-chevron-${sectCollapsed.upcoming?'right':'down'}" style="font-size:10px;color:var(--mid)"></i>
       <i class="fa-solid fa-calendar-days"></i>
       <span>Upcoming expirations — next 6 months</span>
-      <i class="fa-solid fa-chevron-${sectCollapsed.upcoming?'right':'down'}" style="margin-left:auto;font-size:10px;color:var(--mid)"></i>
     </div>
     ${sectCollapsed.upcoming?"":`<div style="margin-bottom:1rem">${upHtml}</div>`}
     <div class="section-title sect-hdr" onclick="toggleSect('vacancies')" style="margin-top:.5rem;margin-bottom:${sectCollapsed.vacancies?'0':'8px'}">
+      <i class="fa-solid fa-chevron-${sectCollapsed.vacancies?'right':'down'}" style="font-size:10px;color:var(--mid)"></i>
       <i class="fa-solid fa-triangle-exclamation"></i>
       <span>Vacancies &amp; flagged seats</span>
-      <i class="fa-solid fa-chevron-${sectCollapsed.vacancies?'right':'down'}" style="margin-left:auto;font-size:10px;color:var(--mid)"></i>
     </div>
     ${sectCollapsed.vacancies?"":vacHtml}`;
 }
@@ -547,7 +555,15 @@ async function renderTracker(){
         <th style="width:12%" onclick="ss('yrs_at_end')">Consec. service${sc('yrs_at_end')}</th>
         <th style="width:12%">12yr eligibility</th>
       </tr></thead><tbody>${rowsHtml}</tbody></table>`;
-    document.getElementById("srch")?.addEventListener("input",e=>{search=e.target.value;renderTracker()});
+    document.getElementById("srch")?.addEventListener("input",e=>{
+      search=e.target.value;
+      clearTimeout(window._srchTimer);
+      window._srchTimer=setTimeout(async()=>{
+        await renderTracker();
+        const inp=document.getElementById("srch");
+        if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}
+      },300);
+    });
     document.getElementById("fb")?.addEventListener("change",e=>{fBoard=e.target.value;renderTracker()});
     document.getElementById("fs")?.addEventListener("change",e=>{fStatus=e.target.value;renderTracker()});
     document.getElementById("fr")?.addEventListener("change",e=>{fRole=e.target.value;renderTracker()});
@@ -728,7 +744,10 @@ function renderPersonModal(){
 }
 
 function renderBulkModal(){
-  const sel=memberships.filter(m=>selected.has(m.id));
+  const allMems=[...memberships,...(dashData?.upcoming_expirations||[])];
+  const seen=new Set();
+  const deduped=allMems.filter(m=>{if(seen.has(m.id))return false;seen.add(m.id);return true;});
+  const sel=deduped.filter(m=>selected.has(m.id));
   return`<div class="modal-bg" id="mBg"><div class="modal">
     <div class="mtitle"><span><i class="fa-solid fa-rotate"></i> Bulk reappointment</span>
       <button class="xbtn" onclick="closeM()" style="font-size:20px">×</button></div>
@@ -736,7 +755,7 @@ function renderBulkModal(){
     <div class="rlist">${sel.map(m=>`<div class="ri">
       <div style="flex:1"><div style="font-weight:500">${m.person_name} ${m.role==="alternate"?`<span class="badge b-alt">Alt</span>`:""}</div>
       <div style="font-size:11px;color:var(--mid)">${m.board}</div></div>
-      <span class="badge ${pBadge[m.party]||"b-none"}">${m.party||"?"}</span></div>`).join("")}</div>
+      <span style="font-size:11px;color:var(--mid)">${m.current_term_end?`Ends ${fmt(m.current_term_end)}`:"No term"}</span></div>`).join("")}</div>
     <div class="fg">
       <div><label>New term start</label><input type="date" id="br-start"></div>
       <div><label>New term end</label><input type="date" id="br-end"></div>
@@ -764,6 +783,15 @@ window.toggleSel=(id,on)=>{on?selected.add(id):selected.delete(id);renderTracker
 window.toggleSelAll=(on,ids)=>{ids.forEach(id=>on?selected.add(id):selected.delete(id));renderTracker()};
 window.clearSel=()=>{selected.clear();renderTracker()};
 window.openBulk=()=>{showBulk=true;showModal=false;showPersonModal=false;renderAll()};
+window.openDashBulk=()=>{
+  selected=new Set(dashBulkSelected);
+  showBulk=true;showModal=false;showPersonModal=false;renderAll();
+};
+window.toggleDashSel=id=>{
+  dashBulkSelected.has(id)?dashBulkSelected.delete(id):dashBulkSelected.add(id);
+  renderDashboard(false);
+};
+window.clearDashSel=()=>{dashBulkSelected.clear();renderDashboard(false);};
 window.quickReappoint=id=>{selected.clear();selected.add(id);showBulk=true;showModal=false;renderAll()};
 window.openEditMb=async id=>{
   editMid=id;
@@ -868,7 +896,7 @@ async function applyBulk(){
 }
 
 // ── routing ──────────────────────────────────────────────────────
-function setTab(t){tab=t;viewPid=null;search="";expanded.clear();if(t!=="dashboard"){dashFilter=null;}renderAll();}
+function setTab(t){tab=t;viewPid=null;search="";expanded.clear();if(t!=="dashboard"){dashFilter=null;dashBulkSelected.clear();}renderAll();}
 
 async function renderAll(){
   // update tab bar
