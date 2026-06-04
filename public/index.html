@@ -603,7 +603,7 @@ async function renderProfile(pid){
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:4px">
           <div><span style="font-size:13px;font-weight:500">${m.board}</span>
             ${m.role==="alternate"?` <span class="badge b-alt">Alt</span>`:""}
-            ${m.eligible_to_return&&new Date(m.eligible_to_return)>today?` <span class="badge b-limited">Cooling off until ${fmt(m.eligible_to_return)}</span>`:""}</div>
+            ${m.eligible_to_return&&new Date(m.eligible_to_return)>today&&m.term_status!=='active'&&m.term_status!=='expiring'?` <span class="badge b-limited">Cooling off until ${fmt(m.eligible_to_return)}</span>`:""}</div>
           <div style="display:flex;gap:4px">${tsBadge(m.term_status)} ${eligBadge(m.eligibility)}</div>
         </div>
         <div style="font-size:12px;color:var(--mid);margin-bottom:4px">
@@ -620,6 +620,7 @@ async function renderProfile(pid){
           <button class="btn" onclick="openEditMb(${m.id})"><i class="fa-solid fa-pen"></i> Edit</button>
           ${isElig?`<button class="btn btn-g" onclick="quickReappoint(${m.id})"><i class="fa-solid fa-rotate"></i> Reappoint</button>`:""}
           <button class="btn" onclick="toggleLeaving(${m.id})">${m.is_leaving_at_end?`<i class="fa-solid fa-user-check"></i> Clear leaving`:`<i class="fa-solid fa-user-minus"></i> Mark leaving`}</button>
+          <button class="btn btn-d" onclick="delMbFromProfile(${m.id},'${p.id}')"><i class="fa-solid fa-trash"></i> Remove board</button>
         </div>
       </div>`;
     }).join("")||`<p style="font-size:12px;color:var(--mid)">No board memberships on file.</p>`;
@@ -635,6 +636,7 @@ async function renderProfile(pid){
         <div style="display:flex;gap:6px">
           <button class="btn btn-p" onclick="openEditPerson(${p.id})"><i class="fa-solid fa-pen"></i> Edit</button>
           <button class="btn btn-g" onclick="openAddMbForPerson(${p.id})"><i class="fa-solid fa-plus"></i> Add board</button>
+          ${mbs.length===0?`<button class="btn btn-d" onclick="deletePersonAction(${p.id},'${p.name.replace(/'/g,"\\'")}')"><i class="fa-solid fa-trash"></i> Delete person</button>`:`<button class="btn" disabled title="Remove all board memberships before deleting" style="opacity:.4;cursor:not-allowed"><i class="fa-solid fa-trash"></i> Delete person</button>`}
         </div>
       </div>
       <div class="section-title"><i class="fa-solid fa-list"></i> Board memberships</div>
@@ -780,6 +782,22 @@ window.delMb=async id=>{
   await api("/memberships/"+id,{method:"DELETE"});
   expanded.delete(id);selected.delete(id);
   renderTracker();
+};
+
+window.delMbFromProfile=async(id,pid)=>{
+  if(!confirm("Remove this board membership?"))return;
+  await api("/memberships/"+id,{method:"DELETE"});
+  renderProfile(pid);
+};
+
+window.deletePersonAction=async(id,name)=>{
+  if(!confirm(`Permanently delete "${name}"? This cannot be undone.`))return;
+  try{
+    await api("/persons/"+id,{method:"DELETE"});
+    setTab("people");
+  }catch(e){
+    alert(e.error||"Delete failed.");
+  }
 };
 
 async function saveMb(){
