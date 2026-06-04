@@ -335,13 +335,13 @@ async function renderDashboard(reload=true){
 
   // stat cards — clickable
   const stats=[
-    {key:"expiring", label:"Expiring ≤90d",   val:s.expiring_90, color:"var(--amber)"},
+    {key:"expiring", label:"Expiring ≤90 Days",val:s.expiring_90, color:"var(--amber)"},
     {key:"limited",  label:"Term limited",     val:s.limited,     color:"var(--red)"},
     {key:"approaching",label:"Near 12yr limit",val:s.approaching, color:"var(--amber)"},
     {key:"vacancies",label:"Vacant / Expired",  val:s.vacancies,   color:"var(--red)"},
   ];
   const statHtml=`<div class="stat${dashFilter===null?' stat-on':''}" onclick="setDashFilter(null)" title="Show all sections">
-      <div class="stat-label">Total members</div><div class="stat-val">${s.total}</div></div>`
+      <div class="stat-label">Total Seats</div><div class="stat-val">${s.total}</div></div>`
     +stats.map(c=>`<div class="stat${dashFilter===c.key?' stat-on':''}" onclick="setDashFilter('${c.key}')" title="Click to filter">
       <div class="stat-label">${c.label}</div>
       <div class="stat-val" style="color:${c.color}">${c.val}</div></div>`).join("");
@@ -411,7 +411,8 @@ async function renderDashboard(reload=true){
     <button class="btn btn-g" onclick="openDashBulk()"><i class="fa-solid fa-rotate"></i> Reappoint selected</button>
     <button class="btn" onclick="clearDashSel()">Clear</button>
   </div>`:"";
-  const hintText=dashBulkSelected.size===0?`<p style="font-size:11px;color:var(--mid);margin-bottom:8px;font-style:italic"><i class="fa-solid fa-circle-info"></i> Check members to select for bulk reappointment.</p>`:"";
+  const hintText=dashBulkSelected.size===0?`<p style="font-size:11px;color:var(--mid);margin-bottom:8px;font-style:italic"><i class="fa-solid fa-circle-info"></i> Check seats to select for bulk reappointment.</p>`:"";
+
   let upHtml;
   if(!dashData.upcoming_expirations.length){
     upHtml=`<p style="font-size:13px;color:var(--mid);padding:8px 0">No terms expiring in the next 6 months.</p>`;
@@ -432,7 +433,7 @@ async function renderDashboard(reload=true){
         <button class="btn" style="height:22px;font-size:10px;padding:1px 8px" onclick="selectDateGroup('${date}',${allSel})">${allSel?'Deselect all':'Select all'}</button>
       </div>${members.map(m=>expCard(m)).join('')}`;
     }).join('');
-    upHtml=dashBulkBar+hintText+groupHtml;
+    upHtml=hintText+groupHtml;
   }
 
   // vacancies — grouped by term end date with checkboxes
@@ -460,7 +461,7 @@ async function renderDashboard(reload=true){
       if(!vacGroups[k])vacGroups[k]=[];
       vacGroups[k].push(m);
     });
-    vacHtml=Object.entries(vacGroups).sort(([a],[b])=>a<b?-1:1).map(([date,members])=>{
+    vacHtml=hintText+Object.entries(vacGroups).sort(([a],[b])=>a<b?-1:1).map(([date,members])=>{
       const allSel=members.every(m=>dashBulkSelected.has(m.id));
       return`<div style="display:flex;align-items:center;justify-content:space-between;margin:10px 0 4px;padding-bottom:4px;border-bottom:2px solid var(--border)">
         <span style="font-size:11px;font-weight:600;color:var(--dark);text-transform:uppercase;letter-spacing:.04em">
@@ -477,10 +478,11 @@ async function renderDashboard(reload=true){
     ${partyHtml?`<div style="margin-bottom:.9rem;display:flex;gap:5px;flex-wrap:wrap;align-items:center">
       <span style="font-size:11px;color:var(--mid)">Party:</span>${partyHtml}</div>`:""}
     ${filterHtml}
+    ${dashBulkBar}
     <div class="section-title sect-hdr" onclick="toggleSect('upcoming')" style="margin-bottom:${sectCollapsed.upcoming?'0':'8px'}">
       <i class="fa-solid fa-chevron-${sectCollapsed.upcoming?'right':'down'}" style="font-size:10px;color:var(--mid)"></i>
       <i class="fa-solid fa-calendar-days"></i>
-      <span>Upcoming expirations — next 6 months</span>
+      <span>Active Terms</span>
     </div>
     ${sectCollapsed.upcoming?"":`<div style="margin-bottom:1rem">${upHtml}</div>`}
     <div class="section-title sect-hdr" onclick="toggleSect('vacancies')" style="margin-top:.5rem;margin-bottom:${sectCollapsed.vacancies?'0':'8px'}">
