@@ -3,11 +3,41 @@ Boards & Commissions Management System
 Flask backend — reads/writes boards_commissions.db via SQLite
 """
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, session
+from functools import wraps
 import sqlite3, json, os
 from datetime import date, datetime, timedelta
 
 app = Flask(__name__, static_folder='public', static_url_path='')
+app.secret_key = os.environ.get('SECRET_KEY', 'boards-commissions-dev-secret')
+
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '')
+
+# ── auth helpers ─────────────────────────────────────────────────
+def require_admin(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('admin'):
+            return jsonify({'error': 'Admin login required'}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.json or {}
+    if ADMIN_PASSWORD and data.get('password') == ADMIN_PASSWORD:
+        session['admin'] = True
+        return jsonify({'ok': True})
+    return jsonify({'error': 'Invalid password'}), 401
+
+@app.route('/api/logout', methods=['POST'])
+def logout():
+    session.pop('admin', None)
+    return jsonify({'ok': True})
+
+@app.route('/api/auth-status', methods=['GET'])
+def auth_status():
+    return jsonify({'admin': bool(session.get('admin'))})
 
 # ── database path ────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -184,6 +214,7 @@ def get_person(pid):
     return jsonify(person)
 
 @app.route('/api/persons', methods=['POST'])
+@require_admin
 def create_person():
     data = request.json
     name  = (data.get('name') or '').strip()
@@ -202,6 +233,7 @@ def create_person():
     return jsonify(dict(row)), 201
 
 @app.route('/api/persons/<int:pid>', methods=['PUT'])
+@require_admin
 def update_person(pid):
     data  = request.json
     db    = get_db()
@@ -220,6 +252,7 @@ def update_person(pid):
     return jsonify(dict(row))
 
 @app.route('/api/persons/<int:pid>', methods=['DELETE'])
+@require_admin
 def delete_person(pid):
     db = get_db()
     count = db.execute(
@@ -268,6 +301,7 @@ def get_membership(mid):
     return jsonify(enrich_membership(row_to_dict(row)))
 
 @app.route('/api/memberships', methods=['POST'])
+@require_admin
 def create_membership():
     data      = request.json
     person_id = data.get('person_id')
@@ -316,6 +350,7 @@ def create_membership():
     return jsonify(enrich_membership(row_to_dict(row))), 201
 
 @app.route('/api/memberships/<int:mid>', methods=['PUT'])
+@require_admin
 def update_membership(mid):
     data = request.json
     db   = get_db()
@@ -345,6 +380,7 @@ def update_membership(mid):
     return jsonify(enrich_membership(row_to_dict(row)))
 
 @app.route('/api/memberships/<int:mid>', methods=['DELETE'])
+@require_admin
 def delete_membership(mid):
     db = get_db()
     db.execute("DELETE FROM board_memberships WHERE id=?", (mid,))
@@ -354,6 +390,7 @@ def delete_membership(mid):
 
 # ── BULK REAPPOINT ───────────────────────────────────────────────
 @app.route('/api/memberships/bulk-reappoint', methods=['POST'])
+@require_admin
 def bulk_reappoint():
     data       = request.json
     ids        = data.get('membership_ids', [])
