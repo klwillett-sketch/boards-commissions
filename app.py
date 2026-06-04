@@ -448,7 +448,7 @@ def dashboard():
             days = (cte_date - today).days
             if 0 <= days <= 90:
                 expiring90 += 1
-            if today <= cte_date <= horizon:
+            if cte_date >= today:
                 upcoming.append({**m, 'days_until_expiry': days})
 
             # vacancy detection
