@@ -219,6 +219,19 @@ def update_person(pid):
     db.close()
     return jsonify(dict(row))
 
+@app.route('/api/persons/<int:pid>', methods=['DELETE'])
+def delete_person(pid):
+    db = get_db()
+    count = db.execute(
+        "SELECT COUNT(*) FROM board_memberships WHERE person_id=?", (pid,)).fetchone()[0]
+    if count > 0:
+        db.close()
+        return jsonify({'error': f'Cannot delete: person has {count} board membership(s). Remove all memberships first.'}), 409
+    db.execute("DELETE FROM persons WHERE id=?", (pid,))
+    db.commit()
+    db.close()
+    return jsonify({'deleted': pid})
+
 # ── MEMBERSHIPS ──────────────────────────────────────────────────
 @app.route('/api/memberships', methods=['GET'])
 def list_memberships():
